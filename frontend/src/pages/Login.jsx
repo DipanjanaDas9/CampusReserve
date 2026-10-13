@@ -34,7 +34,13 @@ export default function Login() {
 
       // Save the token after the backend is implemented.
       sessionStorage.setItem("access_token", data.access_token);
+
+      if (data.user) {
+      sessionStorage.setItem("campus_user", JSON.stringify(data.user));
+      }
+
       navigate("/");
+      
     } catch (err) {
       setError(
         err.message === "Failed to fetch"

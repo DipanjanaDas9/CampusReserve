@@ -22,3 +22,7 @@ frontend/.env.*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local database files
+backend/*.db
+backend/*.db-*
