@@ -9,6 +9,7 @@ import sqlite3
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,21 +41,32 @@ def initialize_database():
     with closing(get_connection()) as connection:
         connection.execute(
             """
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS facilities (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                capacity INTEGER NOT NULL CHECK (capacity > 0),
+                equipment TEXT NOT NULL DEFAULT '[]',
+                location TEXT,
+                opening_time TEXT,
+                closing_time TEXT,
+                restrictions TEXT
             )
             """
-        )
+)
         connection.commit()
 
 
 # Create the table when the application starts.
 initialize_database()
 
+class FacilityRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    capacity: int = Field(gt=0)
+    equipment: list[str] = Field(default_factory=list)
+    location: str | None = None
+    opening_time: str | None = None
+    closing_time: str | None = None
+    restrictions: str | None = None
 
 class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
@@ -107,30 +119,148 @@ def health():
 
 @app.get("/facilities")
 def get_facilities():
+    with closing(get_connection()) as connection:
+        facilities = connection.execute(
+            "SELECT * FROM facilities ORDER BY id"
+        ).fetchall()
+
     return [
         {
-            "id": 1,
-            "name": "Study Room A",
-            "capacity": 6,
-            "equipment": ["Whiteboard", "Projector"],
-        },
-        {
-            "id": 2,
-            "name": "Computer Lab",
-            "capacity": 25,
-            "equipment": ["Computers", "Projector"],
-        },
-        {
-            "id": 3,
-            "name": "Practice Room",
-            "capacity": 10,
-            "equipment": ["Whiteboard"],
-        },
+            "id": facility["id"],
+            "name": facility["name"],
+            "capacity": facility["capacity"],
+            "equipment": json.loads(facility["equipment"]),
+            "location": facility["location"],
+            "opening_time": facility["opening_time"],
+            "closing_time": facility["closing_time"],
+            "restrictions": facility["restrictions"],
+        }
+        for facility in facilities
     ]
+
+@app.get("/facilities/{facility_id}")
+def get_facility(facility_id: int):
+    with closing(get_connection()) as connection:
+        facility = connection.execute(
+            "SELECT * FROM facilities WHERE id = ?",
+            (facility_id,),
+        ).fetchone()
+
+    if facility is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Facility not found",
+        )
+
+    return {
+        "id": facility["id"],
+        "name": facility["name"],
+        "capacity": facility["capacity"],
+        "equipment": json.loads(facility["equipment"]),
+        "location": facility["location"],
+        "opening_time": facility["opening_time"],
+        "closing_time": facility["closing_time"],
+        "restrictions": facility["restrictions"],
+    }
+
+@app.put("/facilities/{facility_id}")
+def update_facility(facility_id: int, facility: FacilityRequest):
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE facilities
+            SET name = ?,
+                capacity = ?,
+                equipment = ?,
+                location = ?,
+                opening_time = ?,
+                closing_time = ?,
+                restrictions = ?
+            WHERE id = ?
+            """,
+            (
+                facility.name,
+                facility.capacity,
+                json.dumps(facility.equipment),
+                facility.location,
+                facility.opening_time,
+                facility.closing_time,
+                facility.restrictions,
+                facility_id,
+            ),
+        )
+
+        connection.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Facility not found",
+            )
+
+    return {
+        "message": "Facility updated successfully",
+        "facility": {
+            "id": facility_id,
+            **facility.model_dump(),
+        },
+    }
 
 SECRET_KEY = secrets.token_hex(32)
 ALGORITHM = "HS256"
 
+@app.post("/facilities", status_code=201)
+def create_facility(facility: FacilityRequest):
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO facilities
+            (name, capacity, equipment, location,
+             opening_time, closing_time, restrictions)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                facility.name,
+                facility.capacity,
+                json.dumps(facility.equipment),
+                facility.location,
+                facility.opening_time,
+                facility.closing_time,
+                facility.restrictions,
+            ),
+        )
+
+        connection.commit()
+        facility_id = cursor.lastrowid
+
+    return {
+        "message": "Facility created successfully",
+        "facility": {
+            "id": facility_id,
+            **facility.model_dump(),
+        },
+    }
+
+@app.delete("/facilities/{facility_id}")
+def delete_facility(facility_id: int):
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            "DELETE FROM facilities WHERE id = ?",
+            (facility_id,),
+        )
+
+        connection.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Facility not found",
+            )
+
+    return {
+        "message": "Facility deleted successfully",
+        "facility_id": facility_id,
+    }
 
 @app.post("/auth/login")
 def login(request: LoginRequest):
