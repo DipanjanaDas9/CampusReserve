@@ -1,2 +1,8 @@
 fastapi
 uvicorn[standard]
+PyJWT>=2.8,<3
+tzdata>=2024.1
+openai
+pydantic
+python-dotenv
+google-genai

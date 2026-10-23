@@ -17,12 +17,16 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from backend.ai_service import (
+    RoomSearchIntent,
     build_room_search_params,
     parse_room_search,
 )
-
+from backend.ai.extractor import extract_room_requirements
 app = FastAPI(title="Campus Reservation API")
 app = FastAPI(title="Campus Reservation API")
 security = HTTPBearer(auto_error=False)
@@ -127,11 +131,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+
 class AIRoomSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
-    search_date: date = Field(alias="date")
-    start_time: time
-    end_time: time
+    search_date: date | None = Field(default=None, alias="date")
+    start_time: time | None = None
+    end_time: time | None = None
+
 
 def hash_password(password: str) -> str:
     """Hash a password using PBKDF2 and a unique random salt."""
@@ -310,41 +316,90 @@ def search_rooms(
         )
     return results
 
+
 @app.post("/rooms/ai-search")
 def ai_search_rooms(
     request: AIRoomSearchRequest,
     user_id: int = Depends(get_current_user),
 ):
-    intent = parse_room_search(request.query)
+    try:
+        requirements = extract_room_requirements(
+            request.query,
+            reference_date=date.today(),
+        )
 
-    params = build_room_search_params(
-        intent,
-        search_date=request.search_date.isoformat(),
-        start_time=request.start_time.isoformat(),
-        end_time=request.end_time.isoformat(),
-    )
+        # Prefer dates and times extracted by Gemini.
+        search_date = (
+            date.fromisoformat(requirements.date)
+            if requirements.date
+            else request.search_date
+        )
+        start_time = (
+            time.fromisoformat(requirements.start_time)
+            if requirements.start_time
+            else request.start_time
+        )
+        end_time = (
+            time.fromisoformat(requirements.end_time)
+            if requirements.end_time
+            else request.end_time
+        )
 
-    results = search_rooms(
-        search_date=request.search_date,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        min_capacity=params["min_capacity"],
-        equipment=params.get("equipment", []),
-        _user_id=user_id,
-    )
+        # Validate the extracted booking date and time.
+        if search_date < date.today():
+            raise HTTPException(
+                status_code=422,
+                detail="The requested date must be today or a future date.",
+            )
 
-    if intent.location:
-        requested_location = intent.location.casefold()
-        results = [
-            room for room in results
-            if requested_location in room["location"].casefold()
-        ]
+        if end_time <= start_time:
+            raise HTTPException(
+                status_code=422,
+                detail="End time must be later than start time.",
+            )
 
-    return {
-        "query": request.query,
-        "interpreted_requirements": intent.model_dump(),
-        "results": results,
-    }
+        intent = RoomSearchIntent(
+            capacity=requirements.group_size,
+            equipment=requirements.equipment,
+        )
+
+        params = build_room_search_params(
+            intent,
+            search_date=search_date.isoformat(),
+            start_time=start_time.isoformat(),
+            end_time=end_time.isoformat(),
+        )
+
+        results = search_rooms(
+            search_date=search_date,
+            start_time=start_time,
+            end_time=end_time,
+            min_capacity=params["min_capacity"],
+            equipment=params.get("equipment", []),
+            _user_id=user_id,
+        )
+
+        return {
+            "query": request.query,
+            "interpreted_requirements": requirements.model_dump(),
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="The extracted room requirements are invalid. Please clarify your request.",
+        ) from exc
+    except Exception as exc:
+        import logging
+        logging.exception("AI room search failed")
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service could not process your request. Please try again.",
+        ) from exc
+
 
 SECRET_KEY = secrets.token_hex(32)
 ALGORITHM = "HS256"
