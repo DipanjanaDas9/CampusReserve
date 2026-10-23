@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { listMyReservations } from "./api/reservations";
+import { listRooms } from "./api/rooms";
 import "./App.css";
 
 const facilityImages = [
@@ -24,7 +26,7 @@ const facilityImages = [
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard, active: true },
-  { label: "Search Spaces", to: "/availability", icon: Search },
+  { label: "Search Spaces", to: "/search", icon: Search },
   { label: "My Reservations", to: "/reservations", icon: CalendarCheck },
   { label: "Notifications", to: "/notifications", icon: Bell },
 ];
@@ -35,6 +37,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [reservations, setReservations] = useState(null);
 
   const user = JSON.parse(
     sessionStorage.getItem("campus_user") || "null"
@@ -70,17 +73,13 @@ export default function Dashboard() {
 
     let cancelled = false;
 
+    listMyReservations()
+      .then((data) => !cancelled && setReservations(data))
+      .catch(() => !cancelled && setReservations([]));
+
     async function loadFacilities() {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"}/facilities`
-        );
-
-        if (!response.ok) {
-          throw new Error("Unable to load facilities.");
-        }
-
-        const data = await response.json();
+        const data = await listRooms();
 
         if (!cancelled) {
           setFacilities(data);
@@ -196,16 +195,20 @@ export default function Dashboard() {
                 <CalendarCheck className="stat-icon blue" aria-hidden="true" />
                 <span>Upcoming Reservations</span>
               </div>
-              <strong className="stat-action">View</strong>
+              <strong className="stat-value">
+                {reservations ? reservations.filter((r) => r.status === "approved" && !r.is_past).length : "…"}
+              </strong>
             </Link>
-            <Link to="/notifications" className="dashboard-stat">
+            <Link to="/reservations" className="dashboard-stat">
               <div className="stat-label">
                 <Bell className="stat-icon orange" aria-hidden="true" />
                 <span>Pending Requests</span>
               </div>
-              <strong className="stat-action orange-text">View</strong>
+              <strong className="stat-value orange-text">
+                {reservations ? reservations.filter((r) => r.status === "pending" && !r.is_past).length : "…"}
+              </strong>
             </Link>
-            <Link to="/availability" className="dashboard-stat">
+            <Link to="/search" className="dashboard-stat">
               <div className="stat-label">
                 <Building2 className="stat-icon green" aria-hidden="true" />
                 <span>Spaces to Explore</span>
@@ -214,7 +217,7 @@ export default function Dashboard() {
                 {loading ? "…" : facilities.length}
               </strong>
             </Link>
-            <Link to="/availability" className="dashboard-stat quick-book-stat">
+            <Link to="/search" className="dashboard-stat quick-book-stat">
               <div className="stat-label">
                 <ArrowUpRight className="stat-icon blue" aria-hidden="true" />
                 <span>Quick Book</span>
@@ -226,7 +229,7 @@ export default function Dashboard() {
           <section id="facilities" className="recommended-section">
             <div className="recommended-heading">
               <h2>Recommended Spaces</h2>
-              <Link to="/availability" className="view-all-link">
+              <Link to="/search" className="view-all-link">
                 View All
               </Link>
             </div>
@@ -284,11 +287,11 @@ export default function Dashboard() {
                         </p>
                         <p className="facility-detail">
                           <MapPin aria-hidden="true" />
-                          Campus facility
+                          {facility.location}
                         </p>
                         <button
                           className="reserve-button"
-                          onClick={() => navigate("/availability")}
+                          onClick={() => navigate(`/spaces/${facility.id}`)}
                         >
                           View Details
                         </button>

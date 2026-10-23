@@ -1,24 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
-import { SAMPLE_SPACES, SLOT_HOURS, getAvailability, startOfWeek, toISODate, } from "../api/availability";
+import { SLOT_HOURS, getAvailability, startOfWeek, toISODate, } from "../api/availability";
+import { listRooms } from "../api/rooms";
 import { cn } from "../lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
 const pad = (h) => `${String(h).padStart(2, "0")}:00`;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const fmtMonthDay = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const fmtHour = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "AM" : "PM"}`;
 export function AvailabilityPage() {
-    const [spaceId, setSpaceId] = useState(SAMPLE_SPACES[0]?.id ?? "");
-    const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+    const [query] = useSearchParams();
+    const [rooms, setRooms] = useState([]);
+    const [spaceId, setSpaceId] = useState(query.get("space") ?? "");
+    const [weekStart, setWeekStart] = useState(() => startOfWeek(query.get("date") ? new Date(`${query.get("date")}T00:00`) : new Date()));
     const [today] = useState(() => toISODate(new Date()));
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
     const [selection, setSelection] = useState(null);
     const navigate = useNavigate();
     useEffect(() => {
-        if (!weekStart)
+        listRooms()
+            .then((list) => { setRooms(list); setSpaceId((current) => current || String(list[0]?.id ?? "")); })
+            .catch((e) => setError(e.message));
+    }, []);
+    useEffect(() => {
+        if (!weekStart || !spaceId)
             return;
         let cancelled = false;
         getAvailability(spaceId, weekStart)
@@ -62,8 +70,8 @@ export function AvailabilityPage() {
             <span className="sr-only">Space</span>
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground"/>
             <select value={spaceId} onChange={(e) => {setSelection(null);setData(null);setError(null);setSpaceId(e.target.value);}} className="h-10 rounded-md border border-input bg-card pl-9 pr-8 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              {SAMPLE_SPACES.map((s) => (<option key={s.id} value={s.id}>
-                  {s.name}
+              {rooms.map((s) => (<option key={s.id} value={s.id}>
+                  {s.name} (up to {s.capacity})
                 </option>))}
             </select>
           </label>
@@ -110,11 +118,13 @@ export function AvailabilityPage() {
                             {status && (() => {
                             const iso = toISODate(d);
                             const selected = selection?.date === iso && selection.hours.includes(h);
-                            return (<button type="button" disabled={status === "booked"} aria-pressed={selected} onClick={() => setSelection((s) => toggleSlot(s, iso, h, getStatus))} className={cn("flex h-full w-full items-center justify-center rounded-md font-medium", status === "booked"
-                                    ? "cursor-not-allowed bg-destructive/10 text-destructive"
+                            if (status === "past")
+                                return <span className="flex h-full w-full items-center justify-center rounded-md bg-muted text-muted-foreground">Past</span>;
+                            return (<button type="button" data-slot={`${iso}-${h}`} disabled={status === "booked"} aria-pressed={selected} onClick={() => setSelection((s) => toggleSlot(s, iso, h, getStatus))} className={cn("flex h-full w-full items-center justify-center rounded-md font-medium", status === "booked"
+                                    ? "cursor-not-allowed bg-destructive/10 text-destructive-strong"
                                     : selected
                                         ? "bg-primary text-primary-foreground"
-                                        : "bg-success/15 text-success hover:bg-success/25")}>
+                                        : "bg-success/15 text-success-strong hover:bg-success/25")}>
                                   {status === "booked" ? "Booked" : selected ? "Selected" : "Available"}
                                 </button>);
                         })()}
@@ -129,7 +139,7 @@ export function AvailabilityPage() {
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-success/30"/> Available</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-destructive/25"/> Booked</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-primary"/> Selected</span>
-            {data?.isSample && <span className="ml-auto italic">Sample data — backend not connected yet</span>}
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-muted"/> Past</span>
           </div>
         </div>
 

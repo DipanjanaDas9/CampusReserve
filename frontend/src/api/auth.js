@@ -1,23 +1,23 @@
-// Matches CampusReserve dev backend/main.py, not Lovable's proposed /api/v1 API.
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-export const ROLE_REDIRECTS = { student: "/" };
+import { API_BASE_URL, apiFetch } from "./client";
+
+export { API_BASE_URL };
+export const ROLE_REDIRECTS = { student: "/", admin: "/admin" };
 export const PASSWORD_MIN_LENGTH = 8;
 export class AuthNotConnectedError extends Error {}
 export class RegistrationNotConnectedError extends Error {}
-async function post(path, payload) {
-  const res = await fetch(API_BASE_URL + path, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Request failed. Check your input and try again.");
-  return body;
-}
-export async function login({email,password,role}) {
-  if(role !== "student") throw new Error("Administrator sign-in is not supported by the current backend.");
-  const data = await post("/auth/login",{email,password});
+
+export async function login({ email, password, role }) {
+  const data = await apiFetch("/auth/login", { method: "POST", body: { email, password }, auth: false });
   if (!data?.access_token || !data?.user) throw new Error("Invalid login response from server.");
-  sessionStorage.setItem("access_token",data.access_token);
-  sessionStorage.setItem("campus_user",JSON.stringify(data.user));
-  return {...data,role:"student"};
+  const accountRole = data.user.role || "student";
+  if (role === "admin" && accountRole !== "admin") {
+    throw new Error("This account does not have administrator access. Sign in on the Student tab.");
+  }
+  sessionStorage.setItem("access_token", data.access_token);
+  sessionStorage.setItem("campus_user", JSON.stringify({ ...data.user, role: accountRole }));
+  return { ...data, role: accountRole };
 }
-export async function register({full_name,email,password}) {
-  await post("/auth/register",{name:full_name,email,password});
+
+export async function register({ full_name, email, password }) {
+  await apiFetch("/auth/register", { method: "POST", body: { name: full_name, email, password }, auth: false });
 }
