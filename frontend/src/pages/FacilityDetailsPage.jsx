@@ -151,12 +151,12 @@ function Overview({ room }) {
     <>
       <dl className="grid gap-5 sm:grid-cols-2">
         {items.map(({ icon: Icon, label, value }) => (
-          <div key={label} className="flex items-start gap-3">
-            <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <div>
-              <dt className="text-sm font-semibold text-foreground">{label}</dt>
-              <dd className="text-sm text-muted-foreground">{value}</dd>
-            </div>
+          <div key={label}>
+            <dt className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              {label}
+            </dt>
+            <dd className="ml-7 text-sm text-muted-foreground">{value}</dd>
           </div>
         ))}
       </dl>

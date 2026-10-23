@@ -17,14 +17,14 @@ const TABS = [
 const STATUS_STYLES = {
   pending: "bg-chart-4/25 text-foreground",
   approved: "bg-success/15 text-foreground",
-  rejected: "bg-destructive/10 text-destructive",
+  rejected: "bg-destructive/10 text-foreground",
 };
 
 const roomName = (id) => findSampleRoom(id)?.name ?? id;
 const initials = (name) => name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
 const approveClass =
-  "inline-flex items-center justify-center gap-1.5 rounded-md bg-success px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-success/85 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  "inline-flex items-center justify-center gap-1.5 rounded-md bg-success/60 px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-success/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 const rejectClass =
   "inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/50 bg-card px-3 py-1.5 text-sm font-semibold text-destructive hover:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
@@ -154,7 +154,7 @@ export function ApprovalsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary" aria-hidden="true">{initials(r.requester.name)}</span>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-foreground" aria-hidden="true">{initials(r.requester.name)}</span>
                         <span>
                           <span className="block text-foreground">{r.requester.name}</span>
                           <span className="text-xs text-muted-foreground">Student</span>

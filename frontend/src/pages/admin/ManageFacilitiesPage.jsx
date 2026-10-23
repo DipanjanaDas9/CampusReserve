@@ -114,7 +114,8 @@ export function ManageFacilitiesPage() {
                     <td className="px-4 py-3 text-foreground">{f.building}</td>
                     <td className="px-4 py-3 text-foreground">{f.capacity}</td>
                     <td className="px-4 py-3">
-                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", f.status === "active" ? "bg-success/15 text-foreground" : "bg-destructive/10 text-destructive")}>
+                      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-foreground", f.status === "active" ? "bg-success/15" : "bg-destructive/10")}>
+                        <span className={cn("h-1.5 w-1.5 rounded-full", f.status === "active" ? "bg-success" : "bg-destructive")} aria-hidden="true" />
                         {f.status === "active" ? "Active" : "Inactive"}
                       </span>
                     </td>

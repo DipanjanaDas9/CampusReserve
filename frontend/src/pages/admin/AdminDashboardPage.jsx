@@ -38,6 +38,8 @@ export function AdminDashboardPage() {
   );
 }
 
+const trendColor = (change, higherIsWorse) => ((change > 0) !== Boolean(higherIsWorse) ? "text-success" : "text-destructive");
+
 function StatCard({ label, value, change, icon: Icon, to, higherIsWorse }) {
   const body = (
     <>
@@ -47,8 +49,8 @@ function StatCard({ label, value, change, icon: Icon, to, higherIsWorse }) {
       </div>
       <div className="mt-2 text-3xl font-bold text-foreground">{value}</div>
       {change !== undefined && (
-        <p className={cn("mt-1 flex items-center gap-1 text-xs font-medium", (change > 0) !== Boolean(higherIsWorse) ? "text-success" : "text-destructive")}>
-          {change > 0 ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
+        <p className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          {change > 0 ? <ArrowUp className={cn("h-3.5 w-3.5", trendColor(change, higherIsWorse))} aria-hidden="true" /> : <ArrowDown className={cn("h-3.5 w-3.5", trendColor(change, higherIsWorse))} aria-hidden="true" />}
           {Math.abs(change)}% vs last week
         </p>
       )}
