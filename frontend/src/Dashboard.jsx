@@ -10,6 +10,7 @@ import {
   LogOut,
   MapPin,
   Search,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -24,9 +25,10 @@ const facilityImages = [
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: LayoutDashboard, active: true },
-  { label: "Search Spaces", to: "/availability", icon: Search },
+  { label: "Search Spaces", to: "/search", icon: Search },
   { label: "My Reservations", to: "/reservations", icon: CalendarCheck },
   { label: "Notifications", to: "/notifications", icon: Bell },
+  { label: "AI Assistant", to: "/ai-finder", icon: Sparkles },
 ];
 
 export default function Dashboard() {
@@ -288,7 +290,18 @@ export default function Dashboard() {
                         </p>
                         <button
                           className="reserve-button"
-                          onClick={() => navigate("/availability")}
+                          onClick={() =>
+                            navigate(`/spaces/${facility.id}`, {
+                              state: {
+                                room: {
+                                  ...facility,
+                                  location: "Campus facility",
+                                  photo: facilityImages[imageIndex],
+                                  isSample: Boolean(facility.is_sample),
+                                },
+                              },
+                            })
+                          }
                         >
                           View Details
                         </button>

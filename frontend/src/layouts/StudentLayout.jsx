@@ -1,16 +1,17 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Building2, CalendarCheck, LayoutDashboard, Search } from "lucide-react";
+import { Bell, Building2, CalendarCheck, LayoutDashboard, Search, Sparkles } from "lucide-react";
 import { cn } from "../lib/utils";
 const NAV = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "search", label: "Search Spaces", icon: Search },
     { key: "reservations", label: "My Reservations", icon: CalendarCheck },
     { key: "notifications", label: "Notifications", icon: Bell },
+    { key: "ai", label: "AI Assistant", icon: Sparkles },
 ];
 export function StudentLayout({ active, children }) {
  const navigate=useNavigate();
  const user=JSON.parse(sessionStorage.getItem("campus_user") || "null");
- const paths={dashboard:"/",search:"/availability",reservations:"/reservations",notifications:"/notifications"};
+ const paths={dashboard:"/",search:"/search",reservations:"/reservations",notifications:"/notifications",ai:"/ai-finder"};
     return (<div className="flex flex-col md:flex-row min-h-screen bg-background">
       <aside className="w-full md:w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground flex">
         <div className="flex items-center gap-2 px-5 py-6 text-base font-bold">

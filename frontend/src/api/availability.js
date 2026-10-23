@@ -18,20 +18,21 @@ export function startOfWeek(d) {
     r.setDate(r.getDate() - r.getDay());
     return r;
 }
-/** Deterministic demo pattern so the calendar has something to show before the backend exists. */
+/** Deterministic demo pattern so the calendar has something to show before the backend exists.
+ *  Also used by the sample room search, so search results and the calendar agree. */
+export function sampleSlotStatus(spaceId, isoDate, hour) {
+    const seed = String(spaceId).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    const dayOfMonth = Number(isoDate.slice(8, 10));
+    const v = (seed + dayOfMonth * 7 + SLOT_HOURS.indexOf(hour) * 13) % 9;
+    return v < 3 ? "booked" : "available";
+}
 function sampleSlots(spaceId, weekStart) {
-    const seed = spaceId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     const slots = [];
     for (let i = 0; i < 7; i++) {
         const day = new Date(weekStart);
         day.setDate(day.getDate() + i);
-        SLOT_HOURS.forEach((hour, j) => {
-            const v = (seed + day.getDate() * 7 + j * 13) % 9;
-            if (v < 3)
-                slots.push({ date: toISODate(day), hour, status: "booked" });
-            else
-                slots.push({ date: toISODate(day), hour, status: "available" });
-        });
+        const date = toISODate(day);
+        SLOT_HOURS.forEach((hour) => slots.push({ date, hour, status: sampleSlotStatus(spaceId, date, hour) }));
     }
     return slots;
 }
