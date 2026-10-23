@@ -10,7 +10,8 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 import json
-
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -39,6 +40,21 @@ def get_connection():
 
 def initialize_database():
     with closing(get_connection()) as connection:
+
+        # Create users table
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        # Create facilities table
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS facilities (
@@ -52,7 +68,25 @@ def initialize_database():
                 restrictions TEXT
             )
             """
-)
+        )
+
+        # Check whether the users table has a role column
+        columns = connection.execute(
+            "PRAGMA table_info(users)"
+        ).fetchall()
+
+        column_names = [column["name"] for column in columns]
+
+        # Add role column if it doesn't exist
+        if "role" not in column_names:
+            connection.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN role TEXT NOT NULL DEFAULT 'student'
+                CHECK (role IN ('student', 'admin'))
+                """
+            )
+
         connection.commit()
 
 
@@ -163,54 +197,76 @@ def get_facility(facility_id: int):
         "restrictions": facility["restrictions"],
     }
 
-@app.put("/facilities/{facility_id}")
-def update_facility(facility_id: int, facility: FacilityRequest):
-    with closing(get_connection()) as connection:
-        cursor = connection.execute(
-            """
-            UPDATE facilities
-            SET name = ?,
-                capacity = ?,
-                equipment = ?,
-                location = ?,
-                opening_time = ?,
-                closing_time = ?,
-                restrictions = ?
-            WHERE id = ?
-            """,
-            (
-                facility.name,
-                facility.capacity,
-                json.dumps(facility.equipment),
-                facility.location,
-                facility.opening_time,
-                facility.closing_time,
-                facility.restrictions,
-                facility_id,
-            ),
-        )
-
-        connection.commit()
-
-        if cursor.rowcount == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="Facility not found",
-            )
-
-    return {
-        "message": "Facility updated successfully",
-        "facility": {
-            "id": facility_id,
-            **facility.model_dump(),
-        },
-    }
-
 SECRET_KEY = secrets.token_hex(32)
 ALGORITHM = "HS256"
+security = HTTPBearer(auto_error=False)
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security)
+):
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        user_id = int(payload["sub"])
+
+    except (jwt.InvalidTokenError, ValueError, KeyError, TypeError):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    with closing(get_connection()) as connection:
+        user = connection.execute(
+            "SELECT id, name, email, role FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User no longer exists",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return dict(user)
+
+def require_admin(
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Administrator access required"
+        )
+
+    return current_user
+
+
+
+@app.get("/auth/me")
+def get_my_profile(
+    current_user: dict = Depends(get_current_user)
+):
+    return current_user
 
 @app.post("/facilities", status_code=201)
-def create_facility(facility: FacilityRequest):
+def create_facility(facility: FacilityRequest,
+    admin: dict = Depends(require_admin)):
     with closing(get_connection()) as connection:
         cursor = connection.execute(
             """
@@ -242,7 +298,8 @@ def create_facility(facility: FacilityRequest):
     }
 
 @app.delete("/facilities/{facility_id}")
-def delete_facility(facility_id: int):
+def delete_facility(facility_id: int,
+    admin: dict = Depends(require_admin)):
     with closing(get_connection()) as connection:
         cursor = connection.execute(
             "DELETE FROM facilities WHERE id = ?",
@@ -268,8 +325,8 @@ def login(request: LoginRequest):
 
     with closing(get_connection()) as connection:
         user = connection.execute(
-            "SELECT id, name, email, password_hash FROM users WHERE email = ?",
-            (email,),
+        "SELECT id, name, email, role, password_hash FROM users WHERE email = ?",            
+        (email,),
         ).fetchone()
 
     if user is None or not verify_password(
@@ -296,6 +353,7 @@ def login(request: LoginRequest):
             "id": user["id"],
             "name": user["name"],
             "email": user["email"],
+            "role": user["role"],
         },
     }
 
@@ -343,5 +401,50 @@ def register_user(user: RegisterRequest):
             "id": user_id,
             "name": name,
             "email": email,
+        },
+    }
+
+@app.put("/facilities/{facility_id}")
+def update_facility(facility_id: int,
+    facility: FacilityRequest,
+    admin: dict = Depends(require_admin)):
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE facilities
+            SET name = ?,
+                capacity = ?,
+                equipment = ?,
+                location = ?,
+                opening_time = ?,
+                closing_time = ?,
+                restrictions = ?
+            WHERE id = ?
+            """,
+            (
+                facility.name,
+                facility.capacity,
+                json.dumps(facility.equipment),
+                facility.location,
+                facility.opening_time,
+                facility.closing_time,
+                facility.restrictions,
+                facility_id,
+            ),
+        )
+
+        connection.commit()
+
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Facility not found",
+            )
+
+    return {
+        "message": "Facility updated successfully",
+        "facility": {
+            "id": facility_id,
+            **facility.model_dump(),
         },
     }
