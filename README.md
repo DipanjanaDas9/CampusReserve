@@ -30,3 +30,13 @@ python scripts/make_admin.py admin@university.edu
 
 Sign in on the **Admin** tab of the login page. Accounts without the admin role are
 refused there, and the `/admin` pages redirect them to the student dashboard.
+
+## Backend tests
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+Each test uses its own temporary SQLite database, so your local `campusreserve.db` is never touched.
