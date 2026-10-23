@@ -44,6 +44,6 @@
 <g stroke="#333" stroke-width="2" fill="none"><circle cx="1020" cy="255" r="13"/><line x1="1020" y1="268" x2="1020" y2="305"/><line x1="998" y1="282" x2="1042" y2="282"/><line x1="1020" y1="305" x2="1002" y2="335"/><line x1="1020" y1="305" x2="1038" y2="335"/></g>
 <text x="1020" y="356" text-anchor="middle" font-size="14" font-weight="bold">Administrator</text>
 <rect x="240" y="843" width="26" height="16" rx="8" fill="#dff3e4" stroke="#2e7d32" /><text x="274" y="856" font-size="12.5">Implemented end-to-end (frontend + API + tests)</text>
-<text x="274" y="886" font-size="12.5">All use cases implemented on feature/siddhu-sprint5 (Sprint 5). UC-06 live accuracy is evaluated separately.</text>
+<text x="274" y="886" font-size="12.5">All use cases implemented on feature/reservation-admin-workflow (Sprint 5). UC-06 live accuracy is evaluated separately.</text>
 <line x1="935" y1="760" x2="550" y2="760" stroke="#555" stroke-width="1.4"/><rect x="935" y="720" width="170" height="80" rx="4" fill="#e8f0fe" stroke="#3367d6" stroke-width="1.6"/><text x="1020" y="745" text-anchor="middle" font-size="11.5" fill="#333">«system»</text><text x="1020" y="764" text-anchor="middle" font-size="13.5" font-weight="bold">Google Gemini API</text><text x="1020" y="782" text-anchor="middle" font-size="11.5" fill="#555">external secondary actor</text>
 </svg>

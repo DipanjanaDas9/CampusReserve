@@ -1,7 +1,7 @@
 # Design artifacts
 
 Diagrams for the progress report (Section 4), kept in step with the code on
-`feature/siddhu-sprint5`. Edit the source file, then re-render the PNG.
+`feature/reservation-admin-workflow`. Edit the source file, then re-render the PNG.
 
 | Diagram | Source | Rendered |
 | --- | --- | --- |
