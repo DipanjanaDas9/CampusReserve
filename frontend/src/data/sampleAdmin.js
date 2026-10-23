@@ -1,8 +1,6 @@
 // Sample data for the admin pages. There are no admin endpoints or roles on the
 // backend yet, so every record is isSample: true and the pages say so.
 // Actions on these pages change local React state only.
-import { SAMPLE_ROOMS } from "./sampleRooms";
-
 const iso = (offsetDays) => {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
@@ -43,9 +41,3 @@ export const SAMPLE_REQUESTS = [
   { id: "REQ-0996", event: "Thesis Review", description: "Thesis chapter review with advisor.", requester: { name: "Kevin Brown", email: "kevin.brown@campus.edu" }, roomId: "lib-204", date: iso(-2), start: "11:00", end: "12:00", attendees: 2, notes: "", status: "approved" },
   { id: "REQ-0993", event: "Dance Practice", description: "Rehearsal for the cultural night.", requester: { name: "Sara Kim", email: "sara.kim@campus.edu" }, roomId: "sc-101", date: iso(-3), start: "18:00", end: "19:00", attendees: 16, notes: "Room capacity is 8.", status: "rejected", reason: "Group is larger than the room capacity." },
 ].map((request) => ({ ...request, isSample: true }));
-
-/** Facilities for Manage Facilities: the sample rooms plus one inactive room. */
-export const SAMPLE_FACILITIES = [
-  ...SAMPLE_ROOMS.map(({ id, name, building, floor, capacity, equipment }) => ({ id, name, building, floor, capacity, equipment, status: "active" })),
-  { id: "art-014", name: "Art Studio 014", building: "Fine Arts Building", floor: "Ground Floor", capacity: 20, equipment: ["Whiteboard"], status: "inactive" },
-].map((facility) => ({ ...facility, isSample: true }));
