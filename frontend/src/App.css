@@ -70,7 +70,7 @@
 }
 
 .dashboard-nav-link.is-active {
-  background: #0874e8;
+  background: #0866d0;
   color: #fff;
   box-shadow: 0 5px 14px #005ac14d;
 }
@@ -252,7 +252,7 @@
 
 .dashboard-welcome p {
   margin: 8px 0 0;
-  color: #68778a;
+  color: #5a6a7e;
   font-size: 14px;
 }
 
