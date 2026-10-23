@@ -61,7 +61,7 @@ def add_room(client, name="Test room", capacity=8, equipment=None):
         return cursor.lastrowid
 
 
-def reserve(client, room_id, start, end, status="active"):
+def reserve(client, room_id, start, end, status="approved"):
     with main.get_connection() as connection:
         connection.execute(
             "INSERT INTO reservations (room_id, user_id, start_time, end_time, status) VALUES (?, 1, ?, ?, ?)",
