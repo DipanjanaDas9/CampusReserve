@@ -12,7 +12,7 @@ export const ROOM_PHOTOS = [
   "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80",
 ];
 
-export const EQUIPMENT_OPTIONS = ["Projector", "Whiteboard", "Computer", "Monitor", "Video conferencing"];
+export const EQUIPMENT_OPTIONS = ["Projector", "Whiteboard", "Computers", "Monitor", "Video conferencing"];
 
 export const OPERATING_HOURS = "8:00 AM – 7:00 PM";
 
@@ -56,7 +56,7 @@ export const SAMPLE_ROOMS = [
     building: "Science Building",
     floor: "2nd Floor",
     capacity: 15,
-    equipment: ["Computer", "Projector"],
+    equipment: ["Computers", "Projector"],
     description: "A computer lab for workshops and hands-on sessions.",
     photo: ROOM_PHOTOS[0],
     isSample: true,
