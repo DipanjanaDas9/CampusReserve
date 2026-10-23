@@ -26,3 +26,8 @@ Thumbs.db
 # Local database files
 backend/*.db
 backend/*.db-*
+tests/.campusreserve-tests-*/
+
+.env
+.venv/
+__pycache__/
