@@ -290,18 +290,7 @@ export default function Dashboard() {
                         </p>
                         <button
                           className="reserve-button"
-                          onClick={() =>
-                            navigate(`/spaces/${facility.id}`, {
-                              state: {
-                                room: {
-                                  ...facility,
-                                  location: "Campus facility",
-                                  photo: facilityImages[imageIndex],
-                                  isSample: Boolean(facility.is_sample),
-                                },
-                              },
-                            })
-                          }
+                          onClick={() => navigate(`/spaces/${facility.id}`)}
                         >
                           View Details
                         </button>
