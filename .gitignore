@@ -31,3 +31,10 @@ tests/.campusreserve-tests-*/
 .env
 .venv/
 __pycache__/
+
+# Test coverage output
+.coverage
+htmlcov/
+
+# Browser test screenshots
+e2e/screenshots/
