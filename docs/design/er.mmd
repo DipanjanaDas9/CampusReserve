@@ -1,0 +1,46 @@
+erDiagram
+  USERS ||--o{ RESERVATIONS : "makes"
+  ROOMS ||--o{ RESERVATIONS : "is booked by"
+  USERS ||--o{ NOTIFICATIONS : "receives"
+  RESERVATIONS |o--o{ NOTIFICATIONS : "is about"
+  USERS {
+    INTEGER id PK "AUTOINCREMENT"
+    TEXT name "NOT NULL"
+    TEXT email UK "NOT NULL, lower-cased"
+    TEXT password_hash "salt:PBKDF2-SHA256, 600k iters"
+    TEXT role "student or admin, DEFAULT student"
+    TEXT created_at "DEFAULT CURRENT_TIMESTAMP"
+  }
+  ROOMS {
+    INTEGER id PK "AUTOINCREMENT"
+    TEXT name "NOT NULL"
+    INTEGER capacity "CHECK capacity > 0"
+    TEXT location "NOT NULL"
+    TEXT equipment "JSON array, DEFAULT []"
+    TEXT description "DEFAULT ''"
+    INTEGER is_sample "0 or 1 (seed data flag)"
+  }
+  RESERVATIONS {
+    INTEGER id PK "AUTOINCREMENT"
+    INTEGER room_id FK "REFERENCES rooms(id)"
+    INTEGER user_id FK "REFERENCES users(id)"
+    TEXT start_time "UTC ISO-8601"
+    TEXT end_time "UTC ISO-8601, CHECK start < end"
+    TEXT status "pending, approved, rejected, cancelled"
+    TEXT purpose "NOT NULL"
+    INTEGER attendees "CHECK attendees > 0"
+    TEXT notes "optional"
+    TEXT decision_reason "set when declined"
+    TEXT checked_in_at "UTC, NULL until check-in"
+    TEXT created_at "DEFAULT CURRENT_TIMESTAMP"
+  }
+  NOTIFICATIONS {
+    INTEGER id PK "AUTOINCREMENT"
+    INTEGER user_id FK "REFERENCES users(id)"
+    INTEGER reservation_id FK "REFERENCES reservations(id), nullable"
+    TEXT kind "submitted, approved, rejected, cancelled, checked_in, system"
+    TEXT title "NOT NULL"
+    TEXT body "NOT NULL"
+    TEXT created_at "DEFAULT CURRENT_TIMESTAMP"
+    TEXT read_at "NULL until read"
+  }

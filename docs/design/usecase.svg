@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="910" viewBox="0 0 1120 910" font-family="Helvetica,Arial,sans-serif">
+<rect width="100%" height="100%" fill="white"/>
+<defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#555"/></marker></defs>
+<rect x="230" y="20" width="640" height="800" rx="6" fill="#fafafa" stroke="#666"/>
+<text x="550" y="42" text-anchor="middle" font-size="15" font-weight="bold">CampusReserve — system boundary</text>
+<line x1="115" y1="400" x2="250" y2="85" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="165" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="245" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="325" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="405" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="485" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="565" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="645" stroke="#555" stroke-width="1.4"/>
+<line x1="115" y1="400" x2="250" y2="760" stroke="#555" stroke-width="1.4"/>
+<line x1="995" y1="280" x2="550" y2="85" stroke="#555" stroke-width="1.4"/>
+<line x1="995" y1="285" x2="910" y2="330" stroke="#555" stroke-width="1.4"/>
+<line x1="995" y1="290" x2="910" y2="430" stroke="#555" stroke-width="1.4"/>
+<ellipse cx="400" cy="85" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="82" text-anchor="middle" font-size="12" font-weight="bold">UC-02</text><text x="400" y="98" text-anchor="middle" font-size="12.5">Log in / log out</text>
+<ellipse cx="400" cy="165" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="162" text-anchor="middle" font-size="12" font-weight="bold">UC-01</text><text x="400" y="178" text-anchor="middle" font-size="12.5">Register account</text>
+<ellipse cx="400" cy="245" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="242" text-anchor="middle" font-size="12" font-weight="bold">UC-03</text><text x="400" y="258" text-anchor="middle" font-size="12.5">Browse &amp; search spaces</text>
+<ellipse cx="400" cy="325" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="322" text-anchor="middle" font-size="12" font-weight="bold">UC-04</text><text x="400" y="338" text-anchor="middle" font-size="12.5">View availability calendar</text>
+<ellipse cx="400" cy="405" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="402" text-anchor="middle" font-size="12" font-weight="bold">UC-05</text><text x="400" y="418" text-anchor="middle" font-size="12.5">Book a space</text>
+<ellipse cx="400" cy="485" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="482" text-anchor="middle" font-size="12" font-weight="bold">UC-07</text><text x="400" y="498" text-anchor="middle" font-size="12.5">View / cancel my reservations</text>
+<ellipse cx="400" cy="565" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="562" text-anchor="middle" font-size="12" font-weight="bold">UC-08</text><text x="400" y="578" text-anchor="middle" font-size="12.5">Check in (30-min window)</text>
+<ellipse cx="400" cy="645" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="642" text-anchor="middle" font-size="12" font-weight="bold">UC-09</text><text x="400" y="658" text-anchor="middle" font-size="12.5">View notifications</text>
+<ellipse cx="400" cy="760" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="400" y="757" text-anchor="middle" font-size="12" font-weight="bold">UC-06</text><text x="400" y="773" text-anchor="middle" font-size="12.5">AI natural-language room search</text>
+<ellipse cx="760" cy="330" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="760" y="327" text-anchor="middle" font-size="12" font-weight="bold">UC-10</text><text x="760" y="343" text-anchor="middle" font-size="12.5">Manage spaces &amp; equipment</text>
+<ellipse cx="760" cy="430" rx="150" ry="30" fill="#dff3e4" stroke="#2e7d32" stroke-width="1.6" />
+<text x="760" y="427" text-anchor="middle" font-size="12" font-weight="bold">UC-11</text><text x="760" y="443" text-anchor="middle" font-size="12.5">Monitor reservations / no-shows</text>
+<path d="M548,398 C600,385 600,345 550,332" fill="none" stroke="#555" stroke-dasharray="5 4" marker-end="url(#a)"/><text x="580" y="369" text-anchor="end" font-size="12" fill="#333">«include»</text>
+<path d="M550,752 C640,700 640,300 550,252" fill="none" stroke="#555" stroke-dasharray="5 4" marker-end="url(#a)"/><text x="610" y="520" font-size="12" fill="#333" transform="rotate(-90 620 520)">«extend»</text>
+<g stroke="#333" stroke-width="2" fill="none"><circle cx="90" cy="375" r="13"/><line x1="90" y1="388" x2="90" y2="425"/><line x1="68" y1="402" x2="112" y2="402"/><line x1="90" y1="425" x2="72" y2="455"/><line x1="90" y1="425" x2="108" y2="455"/></g>
+<text x="90" y="476" text-anchor="middle" font-size="14" font-weight="bold">Student</text>
+<g stroke="#333" stroke-width="2" fill="none"><circle cx="1020" cy="255" r="13"/><line x1="1020" y1="268" x2="1020" y2="305"/><line x1="998" y1="282" x2="1042" y2="282"/><line x1="1020" y1="305" x2="1002" y2="335"/><line x1="1020" y1="305" x2="1038" y2="335"/></g>
+<text x="1020" y="356" text-anchor="middle" font-size="14" font-weight="bold">Administrator</text>
+<rect x="240" y="843" width="26" height="16" rx="8" fill="#dff3e4" stroke="#2e7d32" /><text x="274" y="856" font-size="12.5">Implemented end-to-end (frontend + API + tests)</text>
+<text x="274" y="886" font-size="12.5">All use cases implemented on feature/siddhu-sprint5 (Sprint 5). UC-06 live accuracy is evaluated separately.</text>
+<line x1="935" y1="760" x2="550" y2="760" stroke="#555" stroke-width="1.4"/><rect x="935" y="720" width="170" height="80" rx="4" fill="#e8f0fe" stroke="#3367d6" stroke-width="1.6"/><text x="1020" y="745" text-anchor="middle" font-size="11.5" fill="#333">«system»</text><text x="1020" y="764" text-anchor="middle" font-size="13.5" font-weight="bold">Google Gemini API</text><text x="1020" y="782" text-anchor="middle" font-size="11.5" fill="#555">external secondary actor</text>
+</svg>

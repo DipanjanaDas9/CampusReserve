@@ -1,0 +1,54 @@
+flowchart TB
+  user(["Student / Admin<br/>(web browser)"])
+  subgraph CLIENT["Client tier — React 19 SPA (Vite, localhost:5173)"]
+    direction LR
+    router["React Router<br/>RequireLogin guard"]
+    pages["Student pages<br/>Dashboard · Search Spaces + AI Smart Finder<br/>Facility Details · Availability · Book<br/>My Reservations · Check-in · Notifications"]
+    admin["Admin pages (RequireAdmin)<br/>Admin Dashboard · Approvals<br/>Manage Facilities"]
+    apic["API client modules<br/>api/client.js (token, 401 handling)<br/>auth · rooms · availability · reservations<br/>notifications · admin"]
+    store[("sessionStorage<br/>access_token (JWT)<br/>campus_user")]
+    router --> pages --> apic
+    router --> admin --> apic
+    apic <--> store
+  end
+  subgraph SERVER["Application tier — FastAPI + Uvicorn (127.0.0.1:8000)"]
+    direction LR
+    cors["CORS middleware"]
+    auth["Auth module<br/>POST /auth/register<br/>POST /auth/login<br/>PBKDF2-SHA256 + JWT (HS256)"]
+    guard["get_current_user<br/>(HTTP Bearer dependency)"]
+    search["Room search<br/>GET /rooms/search<br/>overlap check + equipment filter<br/>campus time zone → UTC"]
+    ai["AI room search<br/>POST /rooms/ai-search"]
+    nlp["backend/ai/extractor.py<br/>extract_room_requirements<br/>→ RoomRequirements (JSON schema)"]
+    params["ai_service.py<br/>build_room_search_params"]
+    fac["Rooms<br/>GET /rooms · /rooms/{id}<br/>GET /rooms/{id}/availability"]
+    res["Reservations<br/>POST /reservations (BEGIN IMMEDIATE conflict check)<br/>GET /reservations/me<br/>POST /reservations/{id}/cancel · /check-in"]
+    notes["Notifications<br/>GET /notifications/me<br/>POST …/read · /read-all"]
+    adminapi["Admin API (require_admin)<br/>/admin/stats · /admin/reservations<br/>approve · reject · /admin/rooms CRUD"]
+    cors --> auth
+    cors --> guard --> search
+    guard --> ai --> nlp
+    ai --> params --> search
+    guard --> fac
+    guard --> res
+    guard --> notes
+    guard --> adminapi
+  end
+  subgraph DATA["Data tier"]
+    db[("SQLite<br/>campusreserve.db<br/>users · rooms · reservations<br/>notifications")]
+  end
+  subgraph EXT["External service (outside deployment boundary)"]
+    gemini(["Google Gemini API<br/>gemini-2.5-flash via google-genai<br/>key: GEMINI_API_KEY in .env"])
+  end
+  user -- "HTTPS / UI events" --> router
+  apic -- "JSON over HTTP<br/>Authorization: Bearer JWT" --> cors
+  auth --> db
+  search --> db
+  res --> db
+  notes --> db
+  adminapi --> db
+  fac --> db
+  nlp -- "HTTPS: query text + reference date only" --> gemini
+  classDef aiC fill:#fff4d6,stroke:#c99a06;
+  classDef extC fill:#e8f0fe,stroke:#3367d6;
+  class ai,nlp,params aiC;
+  class gemini extC;

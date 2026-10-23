@@ -1,0 +1,35 @@
+sequenceDiagram
+  autonumber
+  actor S as Student
+  participant UI as React SPA
+  participant API as FastAPI /rooms/ai-search
+  participant G as get_current_user
+  participant EX as ai/extractor.py
+  participant GM as Google Gemini API
+  participant RS as search_rooms()
+  participant DB as SQLite
+  S->>UI: "Room for 5 people tomorrow 2–5 PM<br/>with a projector" (+ optional date/time fields)
+  UI->>API: POST /rooms/ai-search {query, date?, start_time?, end_time?}<br/>Authorization: Bearer JWT
+  API->>G: validate token (HS256, exp 1 h)
+  alt token missing / invalid
+    G-->>UI: 401 Authentication required
+  end
+  G-->>API: user_id
+  API->>EX: extract_room_requirements(query, reference_date=today)
+  EX->>GM: generate_content(system rules + query, response_schema=RoomRequirements)
+  alt no / invalid structured output, or API error
+    GM-->>EX: empty or malformed response
+    EX-->>API: RuntimeError
+    API-->>UI: 502 "AI service could not process your request"
+  end
+  GM-->>EX: JSON {group_size, date, start_time, end_time, equipment, missing_information}
+  EX-->>API: RoomRequirements (Pydantic-validated)
+  API->>API: prefer extracted date/times, else form fields,<br/>reject past date or end ≤ start (422)
+  API->>RS: search_rooms(date, times, min_capacity, equipment)
+  RS->>RS: campus time zone → UTC, reject DST gaps
+  RS->>DB: SELECT rooms WHERE capacity ≥ n AND NOT EXISTS overlapping active reservation
+  DB-->>RS: candidate rooms
+  RS->>RS: keep rooms whose equipment includes all requested
+  RS-->>API: available rooms (sorted by capacity, name)
+  API-->>UI: {query, interpreted_requirements, results}
+  UI-->>S: matching rooms + how the request was understood
