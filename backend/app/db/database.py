@@ -1,10 +1,12 @@
+
 from contextlib import closing
 from .connection import get_connection
+
 
 def initialize_database():
     with closing(get_connection()) as connection:
 
-        # Create users table
+        # 1. Create users table
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -17,7 +19,7 @@ def initialize_database():
             """
         )
 
-        # Create facilities table
+        # 2. Create facilities table
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS facilities (
@@ -33,23 +35,7 @@ def initialize_database():
             """
         )
 
-        # Check whether the users table has a role column
-        columns = connection.execute(
-            "PRAGMA table_info(users)"
-        ).fetchall()
-
-        column_names = [column["name"] for column in columns]
-
-        # Add role column if it doesn't exist
-        if "role" not in column_names:
-            connection.execute(
-                """
-                ALTER TABLE users
-                ADD COLUMN role TEXT NOT NULL DEFAULT 'student'
-                CHECK (role IN ('student', 'admin'))
-                """
-            )
-
+        # 3. Create reservations table
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS reservations (
@@ -74,19 +60,67 @@ def initialize_database():
             )
             """
         )
-        reservation_columns = connection.execute(
-        "PRAGMA table_info(reservations)"
+
+        # 4. Check users table columns
+        user_columns = connection.execute(
+            "PRAGMA table_info(users)"
         ).fetchall()
 
-        column_names = [column["name"] for column in reservation_columns]
+        user_column_names = [
+            column["name"] for column in user_columns
+        ]
 
-        if "checked_in_at" not in column_names:
+        if "role" not in user_column_names:
             connection.execute(
-            """
-            ALTER TABLE reservations
-            ADD COLUMN checked_in_at TEXT
-            """
+                """
+                ALTER TABLE users
+                ADD COLUMN role TEXT NOT NULL DEFAULT 'student'
+                CHECK (role IN ('student', 'admin'))
+                """
             )
-        
 
+        # 5. Check reservations table columns
+        reservation_columns = connection.execute(
+            "PRAGMA table_info(reservations)"
+        ).fetchall()
+
+        reservation_column_names = [
+            column["name"] for column in reservation_columns
+        ]
+
+        # Add check-in tracking if missing
+        if "checked_in_at" not in reservation_column_names:
+            connection.execute(
+                """
+                ALTER TABLE reservations
+                ADD COLUMN checked_in_at TEXT
+                """
+            )
+
+        # Add attendee count if missing
+        if "attendees" not in reservation_column_names:
+            connection.execute(
+                """
+                ALTER TABLE reservations
+                ADD COLUMN attendees INTEGER NOT NULL DEFAULT 1
+                CHECK (attendees >= 1)
+                """
+            )
+        if "purpose" not in reservation_column_names:
+            connection.execute(
+                """
+                ALTER TABLE reservations
+                ADD COLUMN purpose TEXT NOT NULL DEFAULT ''
+                """
+            )
+
+        if "notes" not in reservation_column_names:
+            connection.execute(
+                """
+                ALTER TABLE reservations
+                ADD COLUMN notes TEXT
+                """
+            )
+
+        # 6. Save changes
         connection.commit()

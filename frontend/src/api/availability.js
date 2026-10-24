@@ -1,48 +1,166 @@
-// Placeholder for the FastAPI backend: GET /api/v1/spaces/{id}/availability?start=YYYY-MM-DD&end=YYYY-MM-DD
-const API_BASE_URL = (import.meta.env.VITE_BOOKING_API_BASE_URL || "").replace(/\/$/, "");
-/** One-hour slots from 8:00 AM through the 6:00 PM start (6:00–7:00 PM). */
-export const SLOT_HOURS = Array.from({ length: 11 }, (_, i) => 8 + i);
-export const SAMPLE_SPACES = [
-    { id: "eng-312", name: "Engineering Room 312" },
-    { id: "lib-204", name: "Library Study Room 204" },
-    { id: "sc-101", name: "Student Center 101" },
-];
+
+import { API_BASE_URL } from "./auth";
+
+// One-hour slots: 8 AM through 6 PM.
+export const SLOT_HOURS = Array.from(
+  { length: 11 },
+  (_, i) => 8 + i
+);
+
+const CAMPUS_TIMEZONE = "America/Chicago";
+
 export function toISODate(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${day}`;
 }
+
 export function startOfWeek(d) {
-    const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    r.setDate(r.getDate() - r.getDay());
-    return r;
+  const result = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate()
+  );
+
+  result.setDate(result.getDate() - result.getDay());
+  return result;
 }
-/** Deterministic demo pattern so the calendar has something to show before the backend exists.
- *  Also used by the sample room search, so search results and the calendar agree. */
-export function sampleSlotStatus(spaceId, isoDate, hour) {
-    const seed = String(spaceId).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const dayOfMonth = Number(isoDate.slice(8, 10));
-    const v = (seed + dayOfMonth * 7 + SLOT_HOURS.indexOf(hour) * 13) % 9;
-    return v < 3 ? "booked" : "available";
+
+// Determine Central Time's offset for a particular date.
+// This handles daylight saving time.
+function campusOffset(date) {
+  const reference = new Date(`${date}T12:00:00Z`);
+
+  const text = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAMPUS_TIMEZONE,
+    timeZoneName: "shortOffset",
+  }).formatToParts(reference)
+    .find((part) => part.type === "timeZoneName")?.value;
+
+  const match = text?.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/);
+
+  if (!match) {
+    throw new Error("Could not determine campus timezone.");
+  }
+
+  const sign = match[1];
+  const hours = match[2].padStart(2, "0");
+  const minutes = match[3] || "00";
+
+  return `${sign}${hours}:${minutes}`;
 }
-function sampleSlots(spaceId, weekStart) {
-    const slots = [];
-    for (let i = 0; i < 7; i++) {
-        const day = new Date(weekStart);
-        day.setDate(day.getDate() + i);
-        const date = toISODate(day);
-        SLOT_HOURS.forEach((hour) => slots.push({ date, hour, status: sampleSlotStatus(spaceId, date, hour) }));
+
+function campusTimestamp(date, hour) {
+  const hh = String(hour).padStart(2, "0");
+  return `${date}T${hh}:00:00${campusOffset(date)}`;
+}
+
+async function apiGet(path) {
+  const token = sessionStorage.getItem("access_token");
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: token
+      ? { Authorization: `Bearer ${token}` }
+      : {},
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `API request failed (${response.status})`
+    );
+  }
+
+  return data;
+}
+
+// Load actual facilities from SQLite.
+export async function getFacilities() {
+  return apiGet("/facilities");
+}
+
+async function checkSlot(facilityId, date, hour) {
+  const start = campusTimestamp(date, hour);
+  const end = campusTimestamp(date, hour + 1);
+
+  if (new Date(end) <= new Date()) {
+    return { date, hour, status: "unavailable" };
+  }
+
+  const params = new URLSearchParams({
+    start_time: start,
+    end_time: end,
+    attendees: "1",
+  });
+
+  const result = await apiGet(
+    `/facilities/${facilityId}/availability?${params}`
+  );
+
+let status = "available";
+
+if (!result.available) {
+  const reason = String(result.reason || "").toLowerCase();
+
+  if (
+    reason.includes("already reserved") ||
+    reason.includes("existing reservation") ||
+    reason.includes("overlap") ||
+    reason.includes("booking conflict")
+  ) {
+    status = "booked";
+  } else {
+    status = "unavailable";
+  }
+}
+
+  return { date, hour, status };
+}
+
+export async function getAvailability(facilityId, weekStart) {
+  const tasks = [];
+
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(weekStart);
+    day.setDate(day.getDate() + i);
+
+    const date = toISODate(day);
+
+    for (const hour of SLOT_HOURS) {
+      tasks.push({ date, hour });
     }
-    return slots;
+  }
+
+  const slots = [];
+
+  // Limit simultaneous requests so the local API is not flooded.
+  const batchSize = 6;
+
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+
+    const results = await Promise.all(
+      batch.map(({ date, hour }) =>
+        checkSlot(facilityId, date, hour)
+      )
+    );
+
+    slots.push(...results);
+  }
+
+  return {
+    slots,
+    isSample: false,
+  };
 }
-export async function getAvailability(spaceId, weekStart) {
-    if (!API_BASE_URL)
-        return { slots: sampleSlots(spaceId, weekStart), isSample: true };
-    const end = new Date(weekStart);
-    end.setDate(end.getDate() + 6);
-    const res = await fetch(`${API_BASE_URL}/api/v1/spaces/${encodeURIComponent(spaceId)}/availability?start=${toISODate(weekStart)}&end=${toISODate(end)}`, {headers:{Authorization:`Bearer ${sessionStorage.getItem("access_token") || ""}`}});
-    if (!res.ok)
-        throw new Error("Could not load availability.");
-    return { slots: (await res.json()), isSample: false };
+
+// Temporary compatibility function for older frontend components.
+// Remove once rooms.js is connected to real backend availability.
+export function sampleSlotStatus(spaceId, isoDate, hour) {
+  return "available";
 }
