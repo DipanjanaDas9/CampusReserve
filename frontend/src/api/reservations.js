@@ -1,27 +1,24 @@
-// Placeholder for the FastAPI backend: POST /api/v1/reservations
-// The backend must re-check availability; the frontend selection is only preliminary.
-const API_BASE_URL = (import.meta.env.VITE_BOOKING_API_BASE_URL || "").replace(/\/$/, "");
-export const RESERVATION_ENDPOINT = "/api/v1/reservations";
-export async function submitReservation(req) {
-    if (!API_BASE_URL) {
-        throw new Error("Reservations aren't available yet — the backend is not connected.");
-    }
-    const res = await fetch(`${API_BASE_URL}${RESERVATION_ENDPOINT}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionStorage.getItem("access_token") || ""}` },
-        
-        body: JSON.stringify(req),
-    });
-    if (!res.ok) {
-        let msg = "This time slot is no longer available or the request failed.";
-        try {
-            const data = (await res.json());
-            if (typeof data.detail === "string")
-                msg = data.detail;
-        }
-        catch {
-            /* keep default */
-        }
-        throw new Error(msg);
-    }
+// Reservations API (backend/app/routers/reservations.py). The server re-checks
+// opening hours and conflicts; the calendar selection is only preliminary.
+import { apiRequest } from "./http";
+import { campusISO } from "../lib/datetime";
+
+/**
+ * Request a reservation. `date`, `start` and `end` are campus wall-clock values
+ * ("2026-10-30", "14:00"). Purpose, attendees and notes are not stored by the backend yet.
+ */
+export async function submitReservation({ space_id, date, start, end }) {
+  const facilityId = Number(space_id);
+  if (!Number.isInteger(facilityId) || facilityId < 1) {
+    throw new Error("This is a sample room and cannot be booked. Choose a facility from Search Spaces.");
+  }
+  return apiRequest("/reservations", {
+    method: "POST",
+    body: { facility_id: facilityId, start_time: campusISO(date, start), end_time: campusISO(date, end) },
+  });
 }
+
+/** [{id, facility_id, facility_name, start_time, end_time, status, checked_in_at, created_at}] */
+export const listMyReservations = () => apiRequest("/reservations/me");
+
+export const cancelReservation = (id) => apiRequest(`/reservations/${id}/cancel`, { method: "PATCH" });

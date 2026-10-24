@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { SAMPLE_SPACES } from "../api/availability";
+import { getFacility } from "../api/facilities";
 import { submitReservation } from "../api/reservations";
 export function BookPage() {
     const { id } = useParams();
     const [query] = useSearchParams();
     const date = query.get("date"), start = query.get("start"), end = query.get("end");
-    const space = SAMPLE_SPACES.find((s) => s.id === id);
+    const [facility, setFacility] = useState(null);
+    useEffect(() => {
+        if (/^\d+$/.test(id)) getFacility(id).then(setFacility).catch(() => setFacility(null));
+    }, [id]);
+    const space = facility ?? SAMPLE_SPACES.find((s) => s.id === id);
     const [purpose, setPurpose] = useState("");
     const [attendees, setAttendees] = useState("1");
     const [notes, setNotes] = useState("");

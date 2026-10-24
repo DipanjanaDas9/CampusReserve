@@ -77,14 +77,3 @@ export const SAMPLE_ROOMS = [
 export function findSampleRoom(id) {
   return SAMPLE_ROOMS.find((room) => room.id === id);
 }
-
-// Draft booking rules shown on the Facility Details page. Only the ones marked
-// `enforced` are applied by the app today; confirm the rest with the admin
-// approval rules before enforcing them.
-export const BOOKING_RULES = [
-  { title: "Bookable hours", text: "Rooms can be booked from 8:00 AM to 7:00 PM in one-hour slots.", enforced: true },
-  { title: "One continuous block", text: "Choose consecutive hours on the same day for each reservation.", enforced: true },
-  { title: "Maximum duration", text: "A single reservation can last up to 4 hours.", enforced: false },
-  { title: "Check-in window", text: "Check in within 30 minutes of the start time, or the reservation may be released.", enforced: false },
-  { title: "Cancellation", text: "Cancel from My Reservations before the start time so others can use the room.", enforced: false },
-];

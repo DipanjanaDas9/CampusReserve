@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, BarChart3, Bell, Building, Building2, ClipboardCheck, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { BarChart3, Bell, Building, Building2, ClipboardCheck, LayoutDashboard, LogOut, Users } from "lucide-react";
 import { cn } from "../lib/utils";
-import { currentUser, isDemoAdmin } from "../lib/adminAccess";
+import { currentUser } from "../lib/adminAccess";
 
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
@@ -62,12 +62,6 @@ export function AdminLayout({ active, children }) {
         </div>
       </aside>
       <main className="flex-1 overflow-x-auto">
-        {isDemoAdmin() && (
-          <p role="status" className="flex items-center gap-2 border-b border-chart-4/40 bg-chart-4/20 px-6 py-2 text-sm text-foreground md:px-10">
-            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Demo admin view — role-based access not implemented yet (risk R-04)
-          </p>
-        )}
         <div className="p-6 md:p-10">{children}</div>
       </main>
     </div>

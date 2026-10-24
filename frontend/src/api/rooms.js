@@ -1,17 +1,9 @@
-// Room search against the FastAPI backend (GET /rooms/search, POST /rooms/ai-search).
-// These endpoints are on feature/ai-room-search and not yet on `dev`, so a network
+// AI room search against the FastAPI backend (POST /rooms/ai-search).
+// The endpoint is on feature/ai-room-search and not yet on `dev`, so a network
 // error or 404 falls back to sample rooms, flagged with isSample.
 import { SLOT_HOURS, sampleSlotStatus } from "./availability";
 import { ROOM_PHOTOS, SAMPLE_ROOMS } from "../data/sampleRooms";
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-
-export class ApiError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.status = status;
-  }
-}
+import { API_BASE_URL, ApiError } from "./http";
 
 class EndpointUnavailable extends Error {}
 
@@ -69,21 +61,6 @@ function isSampleRoomFree(roomId, date, startTime, endTime) {
     if (!SLOT_HOURS.includes(hour) || sampleSlotStatus(roomId, date, hour) !== "available") return false;
   }
   return true;
-}
-
-/**
- * @returns {Promise<{rooms: object[], isSample: boolean}>}
- */
-export async function searchRooms({ date, startTime, endTime, minCapacity, equipment = [] }) {
-  const params = new URLSearchParams({ date, start_time: startTime, end_time: endTime, min_capacity: String(minCapacity) });
-  equipment.forEach((item) => params.append("equipment", item));
-  try {
-    const rooms = await request(`/rooms/search?${params}`);
-    return { rooms: rooms.map(fromBackend), isSample: false };
-  } catch (err) {
-    if (!(err instanceof EndpointUnavailable)) throw err;
-    return { rooms: filterSampleRooms({ date, startTime, endTime, minCapacity, equipment }), isSample: true };
-  }
 }
 
 /**

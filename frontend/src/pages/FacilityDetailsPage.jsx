@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, MapPin, Monitor, Users } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, Loader2, MapPin, Monitor, Users } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { SLOT_HOURS, getAvailability, startOfWeek, toISODate } from "../api/availability";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
-import { BOOKING_RULES, OPERATING_HOURS, findSampleRoom } from "../data/sampleRooms";
+import { getFacility } from "../api/facilities";
+import { OPERATING_HOURS, findSampleRoom } from "../data/sampleRooms";
+import { facilityToRoom } from "../lib/rooms";
 import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
 import { formatTime } from "../lib/datetime";
@@ -19,19 +21,48 @@ const TABS = [
 
 const pad = (h) => `${String(h).padStart(2, "0")}:00`;
 
+// Rules the backend enforces when a reservation is requested or changed (backend/app/routers).
+const ENFORCED_RULES = [
+  { title: "Opening hours", text: "A reservation must start and end within the facility's opening hours, on the same day." },
+  { title: "No double booking", text: "A time that overlaps a pending or approved reservation cannot be requested." },
+  { title: "Future times only", text: "Reservations must start in the future." },
+  { title: "Approval", text: "New requests are pending until an administrator approves or denies them." },
+  { title: "Cancellation", text: "You can cancel your own pending or approved reservations." },
+];
+
 export function FacilityDetailsPage() {
   const { id } = useParams();
-  const { state } = useLocation();
-  // Sample rooms are looked up by id; rooms from the backend arrive with the link (no GET /rooms/{id} yet).
-  const room = findSampleRoom(id) ?? state?.room ?? null;
+  // Sample ids (e.g. "eng-312") come from the AI Finder's sample mode; real facilities have numeric ids.
+  const sampleRoom = findSampleRoom(id);
+  const [loaded, setLoaded] = useState({ id: null, room: null, error: "" });
   const [tab, setTab] = useState("overview");
+
+  useEffect(() => {
+    if (sampleRoom) return;
+    let cancelled = false;
+    getFacility(id)
+      .then((facility) => !cancelled && setLoaded({ id, room: facilityToRoom(facility), error: "" }))
+      .catch((err) => !cancelled && setLoaded({ id, room: null, error: err.status === 404 || err.status === 422 ? "Facility not found." : err.message }));
+    return () => {
+      cancelled = true;
+    };
+  }, [id, sampleRoom]);
+
+  const current = loaded.id === id ? loaded : { room: null, error: "" };
+  const room = sampleRoom ?? current.room;
 
   if (!room) {
     return (
       <StudentLayout active="search">
         <div className="mx-auto max-w-4xl">
           <BackLink />
-          <StatusMessage kind="error">We couldn't find that space. Open it again from Search Spaces.</StatusMessage>
+          {current.error ? (
+            <StatusMessage kind="error">{current.error}</StatusMessage>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading facility…
+            </p>
+          )}
         </div>
       </StudentLayout>
     );
@@ -86,7 +117,7 @@ export function FacilityDetailsPage() {
               <EquipmentList items={room.equipment} />
             </section>
             <section id="panel-rules" role="tabpanel" aria-labelledby="tab-rules" hidden={tab !== "rules"}>
-              <Rules />
+              <Rules room={room} />
             </section>
           </div>
         </div>
@@ -140,11 +171,17 @@ function Tabs({ value, onChange }) {
   );
 }
 
+function openingHours(room) {
+  if (room.isSample) return OPERATING_HOURS;
+  if (room.opening_time && room.closing_time) return `${formatTime(room.opening_time)} – ${formatTime(room.closing_time)}`;
+  return "Not set yet — this room cannot be booked until an administrator adds opening hours";
+}
+
 function Overview({ room }) {
   const items = [
     { icon: Users, label: "Capacity", value: `${room.capacity} people` },
     { icon: Monitor, label: "Equipment", value: room.equipment?.length ? room.equipment.join(", ") : "None listed" },
-    { icon: Clock, label: "Operating Hours", value: OPERATING_HOURS },
+    { icon: Clock, label: "Operating Hours", value: openingHours(room) },
     { icon: MapPin, label: "Location", value: room.location },
   ];
   return (
@@ -183,22 +220,31 @@ function EquipmentList({ items }) {
   );
 }
 
-function Rules() {
+function Rules({ room }) {
   return (
     <>
-      <ol className="space-y-3">
-        {BOOKING_RULES.map((rule) => (
+      <h2 className="text-sm font-semibold text-foreground">This facility</h2>
+      <dl className="mt-2 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border p-3">
+          <dt className="text-sm font-semibold text-foreground">Opening hours</dt>
+          <dd className="mt-1 text-sm text-muted-foreground">{openingHours(room)}</dd>
+        </div>
+        <div className="rounded-lg border p-3">
+          <dt className="text-sm font-semibold text-foreground">Restrictions</dt>
+          <dd className="mt-1 text-sm text-muted-foreground">{room.restrictions || "None"}</dd>
+        </div>
+      </dl>
+      <h2 className="mt-5 text-sm font-semibold text-foreground">Booking rules</h2>
+      <ul className="mt-2 space-y-2">
+        {ENFORCED_RULES.map((rule) => (
           <li key={rule.title} className="rounded-lg border p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-foreground">{rule.title}</h2>
-              {!rule.enforced && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Draft — not enforced yet</span>}
-            </div>
+            <h3 className="text-sm font-semibold text-foreground">{rule.title}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{rule.text}</p>
           </li>
         ))}
-      </ol>
+      </ul>
       <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Rules marked draft are waiting for the administrator approval rules.
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> These rules are checked by the server when you submit a reservation.
       </p>
     </>
   );
