@@ -159,8 +159,31 @@ export async function getAvailability(facilityId, weekStart) {
   };
 }
 
-// Temporary compatibility function for older frontend components.
-// Remove once rooms.js is connected to real backend availability.
+
 export function sampleSlotStatus(spaceId, isoDate, hour) {
   return "available";
+}
+
+
+export async function checkRoomAvailability(
+  facilityId,
+  date,
+  startTime,
+  endTime,
+  attendees = 1
+) {
+  const offset = campusOffset(date);
+
+  const start = `${date}T${startTime}:00${offset}`;
+  const end = `${date}T${endTime}:00${offset}`;
+
+  const params = new URLSearchParams({
+    start_time: start,
+    end_time: end,
+    attendees: String(attendees),
+  });
+
+  return apiGet(
+    `/facilities/${facilityId}/availability?${params}`
+  );
 }

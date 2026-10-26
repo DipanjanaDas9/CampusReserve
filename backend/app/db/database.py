@@ -60,6 +60,29 @@ def initialize_database():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                reservation_id INTEGER,
+                kind TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                is_read INTEGER NOT NULL DEFAULT 0
+                    CHECK (is_read IN (0, 1)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                FOREIGN KEY (user_id)
+                    REFERENCES users(id)
+                    ON DELETE CASCADE,
+
+                FOREIGN KEY (reservation_id)
+                    REFERENCES reservations(id)
+                    ON DELETE SET NULL
+            )
+            """
+        )
 
         # 4. Check users table columns
         user_columns = connection.execute(

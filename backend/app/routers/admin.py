@@ -22,9 +22,16 @@ def decide_reservation(
 
             reservation = connection.execute(
                 """
-                SELECT id, status
-                FROM reservations
-                WHERE id = ?
+                SELECT
+                    r.id,
+                    r.user_id,
+                    r.status,
+                    f.name AS facility_name,
+                    r.start_time,
+                    r.end_time
+                FROM reservations r
+                JOIN facilities f ON r.facility_id = f.id
+                WHERE r.id = ?
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -49,6 +56,37 @@ def decide_reservation(
                 """,
                 (decision.status, reservation_id)
             )
+            
+            if decision.status == "approved":
+                kind = "confirmed"
+                title = "Reservation confirmed"
+                body = (
+                    f"Your reservation for {reservation['facility_name']} "
+                    f"has been approved."
+                )
+            else:
+                kind = "cancelled"
+                title = "Reservation rejected"
+                body = (
+                    f"Your reservation request for {reservation['facility_name']} "
+                    f"has been rejected."
+                )
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    reservation["user_id"],
+                    reservation_id,
+                    kind,
+                    title,
+                    body,
+                )
+            )
+
 
             connection.commit()
 

@@ -3,6 +3,10 @@
 // error or 404 falls back to sample rooms, flagged with isSample.
 import { SLOT_HOURS, sampleSlotStatus } from "./availability";
 import { ROOM_PHOTOS, SAMPLE_ROOMS } from "../data/sampleRooms";
+import {
+  getFacilities,
+  checkRoomAvailability,
+} from "./availability";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -74,17 +78,57 @@ function isSampleRoomFree(roomId, date, startTime, endTime) {
 /**
  * @returns {Promise<{rooms: object[], isSample: boolean}>}
  */
-export async function searchRooms({ date, startTime, endTime, minCapacity, equipment = [] }) {
-  const params = new URLSearchParams({ date, start_time: startTime, end_time: endTime, min_capacity: String(minCapacity) });
-  equipment.forEach((item) => params.append("equipment", item));
-  try {
-    const rooms = await request(`/rooms/search?${params}`);
-    return { rooms: rooms.map(fromBackend), isSample: false };
-  } catch (err) {
-    if (!(err instanceof EndpointUnavailable)) throw err;
-    return { rooms: filterSampleRooms({ date, startTime, endTime, minCapacity, equipment }), isSample: true };
-  }
+
+export async function searchRooms({
+  date,
+  startTime,
+  endTime,
+  minCapacity = 1,
+  equipment = [],
+}) {
+  // Retrieve real facilities from SQLite through FastAPI.
+  const facilities = await getFacilities();
+
+  // First filter by group size and equipment.
+  const matching = facilities.filter((room) => {
+    const roomEquipment = room.equipment ?? [];
+
+    const capacityMatches =
+      room.capacity >= Number(minCapacity);
+
+    const equipmentMatches = equipment.every((item) =>
+      roomEquipment.some((own) => sameItem(own, item))
+    );
+
+    return capacityMatches && equipmentMatches;
+  });
+
+  // Check actual reservation availability for each room.
+  const checks = await Promise.all(
+    matching.map(async (room) => {
+      const availability = await checkRoomAvailability(
+        room.id,
+        date,
+        startTime,
+        endTime,
+        Number(minCapacity)
+      );
+
+      return { room, availability };
+    })
+  );
+
+  // Only show rooms that are available for the requested time.
+  const availableRooms = checks
+    .filter(({ availability }) => availability.available)
+    .map(({ room }) => fromBackend(room));
+
+  return {
+    rooms: availableRooms,
+    isSample: false,
+  };
 }
+
 
 /**
  * @returns {Promise<{interpreted: object|null, rooms: object[], isSample: boolean}>}

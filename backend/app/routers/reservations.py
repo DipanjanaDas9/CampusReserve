@@ -86,7 +86,7 @@ def create_reservation(
 
             facility = connection.execute(
                 """
-                SELECT id, capacity, opening_time, closing_time
+                SELECT id, name, capacity, opening_time, closing_time
                 FROM facilities
                 WHERE id = ?
                 """,
@@ -150,8 +150,29 @@ def create_reservation(
                 )
             )
 
-            connection.commit()
+            
             reservation_id = cursor.lastrowid
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    current_user["id"],
+                    reservation_id,
+                    "system",
+                    "Reservation request submitted",
+                    (
+                        f"Your reservation request for {facility['name']} "
+                        "has been submitted and is awaiting administrator approval."
+                    ),
+                )
+            )
+
+            connection.commit()
+
 
         except Exception:
             connection.rollback()
@@ -183,9 +204,14 @@ def cancel_reservation(
 
             reservation = connection.execute(
                 """
-                SELECT id, user_id, status
-                FROM reservations
-                WHERE id = ?
+                SELECT
+                    r.id,
+                    r.user_id,
+                    r.status,
+                    f.name AS facility_name
+                FROM reservations r
+                JOIN facilities f ON r.facility_id = f.id
+                WHERE r.id = ?
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -210,6 +236,7 @@ def cancel_reservation(
                     detail="This reservation cannot be cancelled"
                 )
 
+
             connection.execute(
                 """
                 UPDATE reservations
@@ -219,7 +246,26 @@ def cancel_reservation(
                 (reservation_id,)
             )
 
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    current_user["id"],
+                    reservation_id,
+                    "cancelled",
+                    "Reservation cancelled",
+                    (
+                        f"Your reservation for {reservation['facility_name']} "
+                        "has been successfully cancelled."
+                    ),
+                )
+            )
+
             connection.commit()
+
 
         except Exception:
             connection.rollback()

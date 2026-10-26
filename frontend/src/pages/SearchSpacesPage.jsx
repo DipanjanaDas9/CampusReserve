@@ -3,7 +3,7 @@ import { Check, Loader2, Search } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { searchRooms } from "../api/rooms";
 import { toISODate } from "../api/availability";
-import { EQUIPMENT_OPTIONS, SAMPLE_ROOMS } from "../data/sampleRooms";
+import { EQUIPMENT_OPTIONS } from "../data/sampleRooms";
 import { RoomCard, SortSelect } from "../components/RoomCard";
 import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
@@ -77,7 +77,14 @@ export function SearchSpacesPage() {
     setFilters((f) => ({ ...f, equipment: f.equipment.includes(item) ? f.equipment.filter((x) => x !== item) : [...f.equipment, item] }));
 
   const buildings = useMemo(
-    () => [...new Set([...SAMPLE_ROOMS.map(buildingOf), ...(result?.rooms ?? []).map(buildingOf)])].sort(),
+  () =>
+    [
+      ...new Set(
+        (result?.rooms ?? [])
+          .map(buildingOf)
+          .filter(Boolean)
+      ),
+    ].sort(),
     [result]
   );
   const shown = useMemo(() => {
