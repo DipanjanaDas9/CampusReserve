@@ -2,24 +2,240 @@ import { ArrowDown, ArrowUp, Building, CalendarCheck, ClipboardCheck, UserX } fr
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../layouts/AdminLayout";
 import { SampleDataLabel } from "../../components/SampleDataLabel";
-import {
-  SAMPLE_MOST_USED,
-  SAMPLE_STATS,
-  SAMPLE_WEEKLY_RESERVATIONS,
-} from "../../data/sampleAdmin";
 import { cn } from "../../lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const CAMPUS_TIMEZONE = "America/Chicago";
+
+function getCampusDateParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAMPUS_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value])
+  );
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    key: `${values.year}-${values.month}-${values.day}`,
+  };
+}
+
+function getWeeklyReservationData(reservations) {
+  const today = getCampusDateParts(new Date());
+
+  // Anchor at UTC noon to generate stable calendar dates.
+  const firstDay = new Date(
+    Date.UTC(today.year, today.month - 1, today.day - 6, 12)
+  );
+
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(firstDay);
+    date.setUTCDate(firstDay.getUTCDate() + index);
+
+    const parts = getCampusDateParts(date);
+
+    return {
+      key: parts.key,
+      day: date.toLocaleDateString("en-US", {
+        timeZone: CAMPUS_TIMEZONE,
+        weekday: "short",
+      }),
+      count: 0,
+    };
+  });
+
+  const byDate = new Map(
+    days.map((day) => [day.key, day])
+  );
+
+  for (const reservation of reservations) {
+    if (!reservation.created_at) continue;
+
+    // SQLite CURRENT_TIMESTAMP is stored in UTC.
+    const timestamp = reservation.created_at.includes("T")
+      ? reservation.created_at
+      : reservation.created_at.replace(" ", "T") + "Z";
+
+    const created = new Date(timestamp);
+
+    if (Number.isNaN(created.getTime())) continue;
+
+    const key = getCampusDateParts(created).key;
+    const day = byDate.get(key);
+
+    if (day) {
+      day.count += 1;
+    }
+  }
+
+  return days;
+}
+
+function getMostUsedSpaces(reservations) {
+  const counts = new Map();
+
+  for (const reservation of reservations) {
+    if (
+      !reservation.checked_in_at ||
+      reservation.status !== "approved"
+    ) {
+      continue;
+    }
+
+    const id = reservation.facility_id;
+
+    if (!counts.has(id)) {
+      counts.set(id, {
+        room:
+          reservation.facility_name ||
+          `Facility #${id}`,
+        count: 0,
+      });
+    }
+
+    counts.get(id).count += 1;
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}
+
+function calculateFacilityUtilization(facilities, reservations) {
+  const dayKeys = new Set(
+    getWeeklyReservationData([]).map((day) => day.key)
+  );
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+
+  function parseTime(value) {
+    if (!value) return null;
+
+    const parts = String(value).split(":").map(Number);
+
+    if (
+      parts.length !== 2 ||
+      !Number.isInteger(parts[0]) ||
+      !Number.isInteger(parts[1]) ||
+      parts[0] < 0 ||
+      parts[0] > 23 ||
+      parts[1] < 0 ||
+      parts[1] > 59
+    ) {
+      return null;
+    }
+
+    return parts[0] * 60 + parts[1];
+  }
+
+  const schedules = facilities
+    .map((facility) => ({
+      id: Number(facility.id),
+      opening: parseTime(facility.opening_time),
+      closing: parseTime(facility.closing_time),
+    }))
+    .filter(
+      (facility) =>
+        facility.opening !== null &&
+        facility.closing !== null &&
+        facility.closing > facility.opening
+    );
+
+  if (schedules.length === 0) return null;
+
+  const bookings = reservations
+    .filter((r) => r.status === "approved")
+    .map((r) => ({
+      facilityId: Number(r.facility_id),
+      start: new Date(r.start_time).getTime(),
+      end: new Date(r.end_time).getTime(),
+    }))
+    .filter(
+      (r) =>
+        Number.isFinite(r.start) &&
+        Number.isFinite(r.end) &&
+        r.end > r.start
+    );
+
+  let availableMinutes = 0;
+  let bookedMinutes = 0;
+
+  const now = Date.now();
+  const minute = 60 * 1000;
+
+  // Scan elapsed minutes, respecting campus local dates and DST.
+  const firstMinute = Math.floor(
+    (now - 8 * 24 * 60 * minute) / minute
+  ) * minute;
+
+  for (let time = firstMinute; time < now; time += minute) {
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date(time))
+        .map(({ type, value }) => [type, value])
+    );
+
+    const dateKey =
+      `${parts.year}-${parts.month}-${parts.day}`;
+
+    if (!dayKeys.has(dateKey)) continue;
+
+    const localMinute =
+      Number(parts.hour) * 60 + Number(parts.minute);
+
+    for (const facility of schedules) {
+      if (
+        localMinute < facility.opening ||
+        localMinute >= facility.closing
+      ) {
+        continue;
+      }
+
+      availableMinutes += 1;
+
+      const occupied = bookings.some(
+        (booking) =>
+          booking.facilityId === facility.id &&
+          booking.start < time + minute &&
+          booking.end > time
+      );
+
+      if (occupied) {
+        bookedMinutes += 1;
+      }
+    }
+  }
+
+  return availableMinutes > 0
+    ? (bookedMinutes / availableMinutes) * 100
+    : null;
+}
+
 
 
 export function AdminDashboardPage() {
   const [reservations, setReservations] = useState([]);
   const [noShows, setNoShows] = useState([]);
+  const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-
     async function loadDashboard() {
       try {
         const token = sessionStorage.getItem("access_token");
@@ -37,23 +253,40 @@ export function AdminDashboardPage() {
           Authorization: `Bearer ${token}`,
         };
 
-        const [reservationsResponse, noShowsResponse] =
-          await Promise.all([
-            fetch(`${baseUrl}/admin/reservations`, { headers }),
-            fetch(`${baseUrl}/admin/no-shows`, { headers }),
-          ]);
+        const [
+          reservationsResponse,
+          noShowsResponse,
+          facilitiesResponse,
+        ] = await Promise.all([
+          fetch(`${baseUrl}/admin/reservations`, { headers }),
+          fetch(`${baseUrl}/admin/no-shows`, { headers }),
+          fetch(`${baseUrl}/facilities`, { headers }),
+        ]);
 
-        if (!reservationsResponse.ok || !noShowsResponse.ok) {
+        if (
+          !reservationsResponse.ok ||
+          !noShowsResponse.ok ||
+          !facilitiesResponse.ok
+        ) {
           throw new Error("Could not load admin dashboard statistics.");
         }
 
-        const reservationsData = await reservationsResponse.json();
-        const noShowsData = await noShowsResponse.json();
+        const [
+          reservationsData,
+          noShowsData,
+          facilitiesData,
+        ] = await Promise.all([
+          reservationsResponse.json(),
+          noShowsResponse.json(),
+          facilitiesResponse.json(),
+        ]);
 
         if (!active) return;
 
         setReservations(reservationsData);
         setNoShows(noShowsData.no_shows);
+        setFacilities(facilitiesData);
+        setError("");
       } catch (err) {
         if (active) {
           setError(err.message || "Could not load dashboard.");
@@ -64,6 +297,7 @@ export function AdminDashboardPage() {
         }
       }
     }
+
 
     loadDashboard();
 
@@ -88,7 +322,13 @@ export function AdminDashboardPage() {
     ? (noShows.length / endedApproved.length) * 100
     : 0;
 
-  
+  const weeklyReservations = getWeeklyReservationData(reservations);
+  const mostUsedSpaces = getMostUsedSpaces(reservations);
+  const utilization = useMemo(
+    () => calculateFacilityUtilization(facilities, reservations),
+    [facilities, reservations]
+  );
+
   const cards = [
     {
       label: "Total Reservations",
@@ -96,8 +336,14 @@ export function AdminDashboardPage() {
       icon: CalendarCheck,
     },
     {
-      label: "Facility Utilization (Sample)",
-      value: `${SAMPLE_STATS.utilization.value}%`,
+      label: "Reserved Facility Utilization (7 Days)",
+      value: loading
+        ? "..."
+        : error
+          ? "—"
+          : utilization === null
+            ? "N/A"
+            : `${utilization.toFixed(1)}%`,
       icon: Building,
     },
     {
@@ -131,8 +377,8 @@ export function AdminDashboardPage() {
         </section>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <WeeklyChart data={SAMPLE_WEEKLY_RESERVATIONS} />
-          <MostUsedSpaces data={SAMPLE_MOST_USED} />
+          <WeeklyChart data={weeklyReservations} />
+          <MostUsedSpaces data={mostUsedSpaces} />
         </div>
         
         <section className="mt-6 rounded-xl border bg-card p-5 shadow-card">
@@ -234,7 +480,7 @@ function StatCard({ label, value, change, icon: Icon, to, higherIsWorse }) {
 
 /** Vertical bar chart drawn with divs; the values are also in a visually hidden table. */
 function WeeklyChart({ data }) {
-  const max = Math.max(...data.map((d) => d.count));
+  const max = Math.max(1, ...data.map((d) => d.count));
   return (
     <section className="rounded-xl border bg-card p-5 shadow-card" aria-labelledby="weekly-heading">
       <h2 id="weekly-heading" className="font-semibold text-foreground">Reservations (Last 7 Days)</h2>
@@ -253,7 +499,20 @@ function WeeklyChart({ data }) {
 }
 
 function MostUsedSpaces({ data }) {
-  const max = Math.max(...data.map((d) => d.count));
+  const max = Math.max(1, ...data.map((d) => d.count));
+
+  if (data.length === 0) {
+    return (
+      <section className="rounded-xl border bg-card p-5 shadow-card">
+        <h2 className="font-semibold text-foreground">
+          Most Used Spaces
+        </h2>
+        <p className="mt-4 text-sm text-muted-foreground">
+          No checked-in reservations recorded yet.
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="rounded-xl border bg-card p-5 shadow-card" aria-labelledby="most-used-heading">
       <h2 id="most-used-heading" className="font-semibold text-foreground">Most Used Spaces</h2>

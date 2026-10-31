@@ -119,6 +119,7 @@ def get_all_reservations(
                 r.start_time,
                 r.end_time,
                 r.status,
+                r.checked_in_at,
                 r.attendees,
                 r.purpose,
                 r.notes,
