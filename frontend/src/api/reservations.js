@@ -1,4 +1,3 @@
-
 const API_BASE_URL = (
   import.meta.env.VITE_BOOKING_API_BASE_URL ||
   "http://localhost:8000"
@@ -92,6 +91,43 @@ export async function cancelReservation(id) {
       typeof data?.detail === "string"
         ? data.detail
         : "Could not cancel reservation."
+    );
+  }
+
+  return data;
+}
+
+
+export async function checkInReservation(id) {
+  const token = sessionStorage.getItem("access_token");
+
+  if (!token) {
+    throw new Error("Please log in before checking in.");
+  }
+
+  let response;
+
+  try {
+    response = await fetch(
+      `${API_BASE_URL}/reservations/${id}/check-in`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  } catch {
+    throw new Error("Cannot connect to the reservation server.");
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : "Could not check in to the reservation."
     );
   }
 

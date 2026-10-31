@@ -1,4 +1,5 @@
 from contextlib import closing
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.dependencies import require_admin
 from app.db.connection import get_connection
@@ -130,3 +131,57 @@ def get_all_reservations(
         ).fetchall()
 
     return [dict(reservation) for reservation in reservations]
+
+
+@router.get("/admin/no-shows")
+def get_no_shows(
+    admin: dict = Depends(require_admin)
+):
+    now = datetime.now(timezone.utc)
+
+    with closing(get_connection()) as connection:
+        reservations = connection.execute(
+            """
+            SELECT
+                r.id,
+                r.user_id,
+                u.name AS requester_name,
+                u.email AS requester_email,
+                r.facility_id,
+                f.name AS facility_name,
+                r.start_time,
+                r.end_time,
+                r.status,
+                r.checked_in_at,
+                r.attendees,
+                r.purpose
+            FROM reservations r
+            JOIN users u ON r.user_id = u.id
+            JOIN facilities f ON r.facility_id = f.id
+            WHERE r.status = 'approved'
+              AND r.checked_in_at IS NULL
+            ORDER BY r.end_time DESC
+            """
+        ).fetchall()
+
+    no_shows = []
+
+    for reservation in reservations:
+        end = datetime.fromisoformat(
+            reservation["end_time"].replace("Z", "+00:00")
+        )
+
+        # Reservation timestamps are stored in UTC.
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+
+        # A no-show is confirmed only after the booking ends.
+        if end <= now:
+            no_show = dict(reservation)
+            no_show["attendance_status"] = "no_show"
+            no_shows.append(no_show)
+
+    return {
+        "total_no_shows": len(no_shows),
+        "no_shows": no_shows
+    }

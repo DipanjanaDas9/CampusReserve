@@ -277,6 +277,7 @@ def cancel_reservation(
         "status": "cancelled"
     }
 
+@router.patch("/{reservation_id}/check-in")
 def check_in_reservation(
     reservation_id: int,
     current_user: dict = Depends(get_current_user)
