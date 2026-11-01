@@ -28,39 +28,58 @@ export function AvailabilityPage() {
   const navigate = useNavigate();
 
   // Load real facilities from FastAPI
-  useEffect(() => {
-    let active = true;
 
-    async function loadRooms() {
-      try {
-        const facilities = await getFacilities();
+useEffect(() => {
+  let active = true;
 
-        if (!active) return;
+  async function loadRooms() {
+    try {
+      const facilities = await getFacilities();
 
-        setSpaces(facilities);
+      if (!active) return;
 
-        if (facilities.length > 0) {
-          setSpaceId(String(facilities[0].id));
-        }
+      // Only show active facilities to students.
+      const activeFacilities = facilities.filter(
+        (facility) => facility.is_active === true
+      );
 
-        setError(null);
-      } catch (err) {
-        if (active) {
-          setError(err.message || "Could not load rooms.");
-        }
-      } finally {
-        if (active) {
-          setRoomsLoading(false);
-        }
+      setSpaces(activeFacilities);
+
+      // Preserve the selected room if it is still active.
+      // Otherwise, select the first available active room.
+      setSpaceId((currentId) => {
+        const stillActive = activeFacilities.some(
+          (facility) => String(facility.id) === String(currentId)
+        );
+
+        return stillActive
+          ? currentId
+          : activeFacilities.length > 0
+            ? String(activeFacilities[0].id)
+            : "";
+      });
+
+      // Clear old selections and calendar results.
+      setSelection(null);
+      setData(null);
+      setError(null);
+    } catch (err) {
+      if (active) {
+        setError(err.message || "Could not load rooms.");
+      }
+    } finally {
+      if (active) {
+        setRoomsLoading(false);
       }
     }
+  }
 
-    loadRooms();
+  loadRooms();
 
-    return () => {
-      active = false;
-    };
-  }, []);
+  return () => {
+    active = false;
+  };
+}, []);
 
   // Load real availability when room or week changes
   useEffect(() => {

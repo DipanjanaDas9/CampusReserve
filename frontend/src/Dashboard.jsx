@@ -50,17 +50,27 @@ export default function Dashboard() {
     .join("")
     .toUpperCase() || "ST";
 
-  const filteredFacilities = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return facilities;
 
-    return facilities.filter((facility) =>
-      [facility.name, ...(facility.equipment || [])]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [facilities, searchTerm]);
+
+const activeFacilities = useMemo(
+  () => facilities.filter((facility) => facility.is_active === true),
+  [facilities]
+);
+
+const filteredFacilities = useMemo(() => {
+  const query = searchTerm.trim().toLowerCase();
+
+  if (!query) return activeFacilities;
+
+  return activeFacilities.filter((facility) =>
+    [facility.name, ...(facility.equipment || [])]
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  );
+}, [activeFacilities, searchTerm]);
+
+
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -213,7 +223,7 @@ export default function Dashboard() {
                 <span>Spaces to Explore</span>
               </div>
               <strong className="stat-value green-text">
-                {loading ? "…" : facilities.length}
+                {loading ? "…" : activeFacilities.length}
               </strong>
             </Link>
             <Link to="/availability" className="dashboard-stat quick-book-stat">

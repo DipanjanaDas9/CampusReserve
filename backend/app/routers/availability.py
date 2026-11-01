@@ -50,7 +50,7 @@ def check_availability(
 
         facility = connection.execute(
             """
-            SELECT id, name, capacity, opening_time, closing_time
+            SELECT id, name, capacity, opening_time, closing_time, is_active
             FROM facilities
             WHERE id = ?
             """,
@@ -62,6 +62,14 @@ def check_availability(
                 status_code=404,
                 detail="Facility not found"
             )
+
+# Inactive facilities are not available for new bookings.
+        if not facility["is_active"]:
+            return {
+                "facility_id": facility_id,
+                "available": False,
+                "reason": "This facility is currently inactive",
+            }
 
 
         if attendees is not None and attendees > facility["capacity"]:

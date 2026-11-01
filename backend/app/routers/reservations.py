@@ -86,7 +86,7 @@ def create_reservation(
 
             facility = connection.execute(
                 """
-                SELECT id, name, capacity, opening_time, closing_time
+                SELECT id, name, capacity, opening_time, closing_time, is_active
                 FROM facilities
                 WHERE id = ?
                 """,
@@ -97,6 +97,11 @@ def create_reservation(
                 raise HTTPException(
                     status_code=404,
                     detail="Facility not found"
+                )
+            if not facility["is_active"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This facility is currently inactive and cannot be reserved"
                 )
             if reservation.attendees > facility["capacity"]:
                 raise HTTPException(

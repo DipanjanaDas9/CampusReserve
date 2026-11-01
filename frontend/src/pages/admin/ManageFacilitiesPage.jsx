@@ -2,11 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Plus, Search } from "lucide-react";
 import { AdminLayout } from "../../layouts/AdminLayout";
 import { SampleDataLabel } from "../../components/SampleDataLabel";
-import { SAMPLE_FACILITIES } from "../../data/sampleAdmin";
 import { EQUIPMENT_OPTIONS } from "../../data/sampleRooms";
 import { cn } from "../../lib/utils";
 
-const EMPTY_FORM = { name: "", building: "", floor: "", capacity: "", equipment: [], status: "active" };
+const EMPTY_FORM = {
+  name: "",
+  building: "",
+  floor: "",
+  capacity: "",
+  equipment: [],
+  status: "active",
+  opening_time: "08:00",
+  closing_time: "20:00",
+};
 
 const fieldClass =
   "h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
@@ -14,12 +22,83 @@ const primaryButton =
   "inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-brand hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export function ManageFacilitiesPage() {
-  const [facilities, setFacilities] = useState(SAMPLE_FACILITIES);
-  const [query, setQuery] = useState("");
+  const [facilities, setFacilities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");  const [query, setQuery] = useState("");
   const [building, setBuilding] = useState("");
   const [status, setStatus] = useState("");
   const [editing, setEditing] = useState(null); // null (closed), "new", or a facility
   const [notice, setNotice] = useState("");
+
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadFacilities() {
+      try {
+        const token = sessionStorage.getItem("access_token");
+
+        if (!token) {
+          throw new Error("Please log in as an administrator.");
+        }
+
+        const baseUrl = (
+          import.meta.env.VITE_BOOKING_API_BASE_URL ||
+          "http://localhost:8000"
+        ).replace(/\/$/, "");
+
+        const response = await fetch(`${baseUrl}/facilities`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data?.detail === "string"
+              ? data.detail
+              : "Could not load facilities."
+          );
+        }
+
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected facilities response.");
+        }
+
+        if (!active) return;
+
+        const realFacilities = data.map((facility) => ({
+          ...facility,
+          building: facility.location || "Not specified",
+          floor: "",
+          equipment: Array.isArray(facility.equipment)
+            ? facility.equipment
+            : [],
+          status: facility.is_active ? "active" : "inactive",
+        }));
+
+        setFacilities(realFacilities);
+        setError("");
+      } catch (err) {
+        if (active) {
+          setError(err.message || "Could not load facilities.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadFacilities();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
 
   const buildings = [...new Set(facilities.map((f) => f.building))].sort();
   const shown = facilities.filter((f) => {
@@ -27,23 +106,169 @@ export function ManageFacilitiesPage() {
     return (!q || f.name.toLowerCase().includes(q)) && (!building || f.building === building) && (!status || f.status === status);
   });
 
-  function save(values) {
-    if (editing === "new") {
-      const id = `${values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now().toString(36)}`;
-      setFacilities((fs) => [...fs, { ...values, id, isSample: true }]);
-      setNotice(`${values.name} added.`);
-    } else {
-      setFacilities((fs) => fs.map((f) => (f.id === editing.id ? { ...f, ...values } : f)));
-      setNotice(`${values.name} updated.`);
-    }
-    setEditing(null);
-  }
 
-  function toggleStatus(facility) {
-    const next = facility.status === "active" ? "inactive" : "active";
-    setFacilities((fs) => fs.map((f) => (f.id === facility.id ? { ...f, status: next } : f)));
-    setNotice(`${facility.name} ${next === "active" ? "activated" : "deactivated"}.`);
+
+async function save(values) {
+  setNotice("");
+  setError("");
+
+  try {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) {
+      throw new Error("Please log in as an administrator.");
+    }
+
+    const baseUrl = (
+      import.meta.env.VITE_BOOKING_API_BASE_URL ||
+      "http://localhost:8000"
+    ).replace(/\/$/, "");
+
+    const isNew = editing === "new";
+
+    const url = isNew
+      ? `${baseUrl}/facilities`
+      : `${baseUrl}/facilities/${editing.id}`;
+
+    const response = await fetch(url, {
+      method: isNew ? "POST" : "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: values.name,
+        capacity: values.capacity,
+        equipment: values.equipment,
+        location: values.building,
+        opening_time: values.opening_time,
+        closing_time: values.closing_time,
+        restrictions: isNew ? "" : (editing.restrictions || ""),
+      }),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data?.detail === "string"
+          ? data.detail
+          : isNew
+            ? "Could not create facility."
+            : "Could not update facility."
+      );
+    }
+
+    // Refresh the facility list from SQLite.
+    const listResponse = await fetch(`${baseUrl}/facilities`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!listResponse.ok) {
+      throw new Error(
+        "Facility saved, but the list could not be refreshed."
+      );
+    }
+
+    const updatedFacilities = await listResponse.json();
+
+    setFacilities(
+      updatedFacilities.map((facility) => ({
+        ...facility,
+        building: facility.location || "Not specified",
+        floor: "",
+        equipment: Array.isArray(facility.equipment)
+          ? facility.equipment
+          : [],
+          status: facility.is_active ? "active" : "inactive",
+      }))
+    );
+
+    setNotice(
+      `${values.name} ${isNew ? "added" : "updated"} successfully.`
+    );
+
+    setEditing(null);
+
+  } catch (err) {
+    setError(err.message || "Could not save facility.");
   }
+}
+
+
+
+
+async function toggleStatus(facility) {
+  setNotice("");
+  setError("");
+
+  const newStatus = facility.status !== "active";
+
+  try {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) {
+      throw new Error("Please log in as an administrator.");
+    }
+
+    const baseUrl = (
+      import.meta.env.VITE_BOOKING_API_BASE_URL ||
+      "http://localhost:8000"
+    ).replace(/\/$/, "");
+
+    const response = await fetch(
+      `${baseUrl}/facilities/${facility.id}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          is_active: newStatus,
+        }),
+      }
+    );
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data?.detail === "string"
+          ? data.detail
+          : "Could not update facility status."
+      );
+    }
+
+    // Update React only after SQLite confirms success.
+    setFacilities((current) =>
+      current.map((f) =>
+        f.id === facility.id
+          ? {
+              ...f,
+              is_active: data.facility.is_active,
+              status: data.facility.is_active
+                ? "active"
+                : "inactive",
+            }
+          : f
+      )
+    );
+
+    setNotice(
+      `${facility.name} ${
+        newStatus ? "activated" : "deactivated"
+      } successfully.`
+    );
+  } catch (err) {
+    setError(
+      err.message || "Could not update facility status."
+    );
+  }
+}
+
 
   return (
     <AdminLayout active="facilities">
@@ -87,7 +312,25 @@ export function ManageFacilitiesPage() {
             </label>
           </div>
 
-          <p role="status" className="min-h-5 px-4 pt-3 text-sm text-foreground">{notice}</p>
+          <div className="min-h-5 px-4 pt-3 text-sm">
+            {loading && (
+              <p className="text-muted-foreground">
+                Loading facilities...
+              </p>
+            )}
+
+            {error && (
+              <p role="alert" className="text-destructive">
+                {error}
+              </p>
+            )}
+
+            {notice && (
+              <p role="status" className="text-foreground">
+                {notice}
+              </p>
+            )}
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
@@ -100,7 +343,7 @@ export function ManageFacilitiesPage() {
                 </tr>
               </thead>
               <tbody>
-                {shown.length === 0 && (
+                {!loading && !error && shown.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">No facilities match these filters.</td>
                   </tr>
@@ -197,7 +440,7 @@ function FacilityDialog({ facility, existingNames, onSave, onClose }) {
   const dialogRef = useRef(null);
   const [form, setForm] = useState(() =>
     facility
-      ? { name: facility.name, building: facility.building, floor: facility.floor ?? "", capacity: String(facility.capacity), equipment: facility.equipment, status: facility.status }
+      ? { name: facility.name, building: facility.building, floor: facility.floor ?? "", capacity: String(facility.capacity), equipment: facility.equipment, status: facility.status,opening_time: facility.opening_time || "08:00", closing_time: facility.closing_time || "20:00", }
       : EMPTY_FORM
   );
   const [errors, setErrors] = useState({});
@@ -232,8 +475,28 @@ function FacilityDialog({ facility, existingNames, onSave, onClose }) {
       dialogRef.current.querySelector(`#fac-${Object.keys(next)[0]}`)?.focus();
       return;
     }
-    onSave({ name: form.name.trim(), building: form.building.trim(), floor: form.floor.trim(), capacity, equipment: form.equipment, status: form.status });
-  }
+    if (
+      !form.opening_time ||
+      !form.closing_time ||
+      form.opening_time >= form.closing_time
+    ) {
+      setErrors({
+        hours: "Closing time must be after opening time.",
+      });
+      return;
+    }
+
+    onSave({
+      name: form.name.trim(),
+      building: form.building.trim(),
+      floor: form.floor.trim(),
+      capacity,
+      equipment: form.equipment,
+      status: form.status,
+      opening_time: form.opening_time,
+      closing_time: form.closing_time,
+    });
+}
 
   const title = facility ? "Edit Facility" : "Add Facility";
   return (
@@ -250,13 +513,22 @@ function FacilityDialog({ facility, existingNames, onSave, onClose }) {
           <TextField id="fac-building" label="Building" value={form.building} onChange={set("building")} error={errors.building} />
           <TextField id="fac-floor" label="Floor (optional)" value={form.floor} onChange={set("floor")} />
           <TextField id="fac-capacity" label="Capacity" type="number" min="1" value={form.capacity} onChange={set("capacity")} error={errors.capacity} />
-          <div>
-            <label htmlFor="fac-status" className="mb-1 block text-sm font-medium">Status</label>
-            <select id="fac-status" value={form.status} onChange={set("status")} className={fieldClass}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
+          <TextField
+            id="fac-opening"
+            label="Opening Time"
+            type="time"
+            value={form.opening_time}
+            onChange={set("opening_time")}
+          />
+
+          <TextField
+            id="fac-closing"
+            label="Closing Time"
+            type="time"
+            value={form.closing_time}
+            onChange={set("closing_time")}
+          />
+
           <fieldset className="sm:col-span-2">
             <legend className="mb-1 text-sm font-medium">Equipment</legend>
             <div className="grid gap-2 sm:grid-cols-2">

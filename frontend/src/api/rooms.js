@@ -90,18 +90,19 @@ export async function searchRooms({
   const facilities = await getFacilities();
 
   // First filter by group size and equipment.
-  const matching = facilities.filter((room) => {
-    const roomEquipment = room.equipment ?? [];
 
-    const capacityMatches =
-      room.capacity >= Number(minCapacity);
+const matching = facilities.filter((room) => {
+  // Hide inactive facilities from student searches.
+  const isActive = room.is_active === true;
+  const roomEquipment = room.equipment ?? [];
+  const capacityMatches =
+    room.capacity >= Number(minCapacity);
+  const equipmentMatches = equipment.every((item) =>
+    roomEquipment.some((own) => sameItem(own, item))
+  );
+  return isActive && capacityMatches && equipmentMatches;
+});
 
-    const equipmentMatches = equipment.every((item) =>
-      roomEquipment.some((own) => sameItem(own, item))
-    );
-
-    return capacityMatches && equipmentMatches;
-  });
 
   // Check actual reservation availability for each room.
   const checks = await Promise.all(

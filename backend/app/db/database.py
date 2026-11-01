@@ -30,8 +30,9 @@ def initialize_database():
                 location TEXT,
                 opening_time TEXT,
                 closing_time TEXT,
-                restrictions TEXT
-            )
+                restrictions TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1
+                CHECK (is_active IN (0, 1))            )
             """
         )
 
@@ -144,6 +145,26 @@ def initialize_database():
                 ADD COLUMN notes TEXT
                 """
             )
+
+
+        # Add active/inactive tracking to existing facilities
+        facility_columns = connection.execute(
+            "PRAGMA table_info(facilities)"
+        ).fetchall()
+
+        facility_column_names = [
+            column["name"] for column in facility_columns
+        ]
+
+        if "is_active" not in facility_column_names:
+            connection.execute(
+                """
+                ALTER TABLE facilities
+                ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+                CHECK (is_active IN (0, 1))
+                """
+            )
+
 
         # 6. Save changes
         connection.commit()
