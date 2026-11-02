@@ -15,6 +15,8 @@ import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage.jsx";
 import { ComingSoonPage } from "./pages/admin/ComingSoonPage.jsx";
 import { ApprovalsPage } from "./pages/admin/ApprovalsPage.jsx";
 import { ManageFacilitiesPage } from "./pages/admin/ManageFacilitiesPage.jsx";
+import { UsersPage } from "./pages/admin/UsersPage";
+import { ReportsPage } from "./pages/admin/ReportsPage";
 function RequireLogin() { return sessionStorage.getItem("access_token") ? <Outlet /> : <Navigate to="/login" replace />; }
 export default function App() { return <BrowserRouter><Routes>
 <Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} />
@@ -30,8 +32,8 @@ export default function App() { return <BrowserRouter><Routes>
 <Route path="/admin" element={<AdminDashboardPage />} />
 <Route path="/admin/approvals" element={<ApprovalsPage />} />
 <Route path="/admin/facilities" element={<ManageFacilitiesPage />} />
-<Route path="/admin/users" element={<ComingSoonPage active="users" title="Users" />} />
-<Route path="/admin/reports" element={<ComingSoonPage active="reports" title="Reports" />} />
+<Route path="/admin/users" element={<UsersPage />} />
+<Route path="/admin/reports" element={<ReportsPage />} />
 <Route path="/admin/notifications" element={<ComingSoonPage active="notifications" title="Notifications" />} />
 </Route></Route>
 <Route path="*" element={<Navigate to="/" replace />} /></Routes></BrowserRouter>; }

@@ -186,3 +186,24 @@ def get_no_shows(
         "total_no_shows": len(no_shows),
         "no_shows": no_shows
     }
+
+
+@router.get("/admin/users")
+def get_all_users(
+    admin: dict = Depends(require_admin)
+):
+    with closing(get_connection()) as connection:
+        users = connection.execute(
+            """
+            SELECT
+                id,
+                name,
+                email,
+                role,
+                created_at
+            FROM users
+            ORDER BY created_at DESC, id DESC
+            """
+        ).fetchall()
+
+    return [dict(user) for user in users]
