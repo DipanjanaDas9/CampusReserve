@@ -3,6 +3,7 @@
 // error or 404 falls back to sample rooms, flagged with isSample.
 import { SLOT_HOURS, sampleSlotStatus } from "./availability";
 import { ROOM_PHOTOS, SAMPLE_ROOMS } from "../data/sampleRooms";
+import { authenticatedFetch } from "./authenticatedFetch";
 import {
   getFacilities,
   checkRoomAvailability,
@@ -135,16 +136,50 @@ const matching = facilities.filter((room) => {
  * @returns {Promise<{interpreted: object|null, rooms: object[], isSample: boolean}>}
  *   interpreted is null when the AI service could not be reached (sample fallback).
  */
-export async function aiSearchRooms({ query, date = null, startTime = null, endTime = null }) {
-  try {
-    const data = await request("/rooms/ai-search", {
+
+export async function aiSearchRooms({
+  query,
+  date = null,
+  startTime = null,
+  endTime = null,
+}) {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/rooms/ai-search`,
+    {
       method: "POST",
-      body: JSON.stringify({ query, date, start_time: startTime, end_time: endTime }),
-    });
-    return { interpreted: data.interpreted_requirements, rooms: data.results.map(fromBackend), isSample: false };
-  } catch (err) {
-    if (!(err instanceof EndpointUnavailable)) throw err;
-    // No AI extraction is possible offline; show the sample rooms without pretending to interpret the request.
-    return { interpreted: null, rooms: filterSampleRooms({ date, startTime, endTime }), isSample: true };
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+      }),
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      typeof data?.detail === "string"
+        ? data.detail
+        : `AI search failed (${response.status}).`;
+
+    throw new ApiError(message, response.status);
   }
+
+  if (
+    !data?.interpreted_requirements ||
+    !Array.isArray(data.results)
+  ) {
+    throw new Error("AI search returned an unexpected response.");
+  }
+
+  return {
+    interpreted: data.interpreted_requirements,
+    rooms: data.results.map(fromBackend),
+    isSample: false,
+  };
 }

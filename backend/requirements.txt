@@ -2,3 +2,4 @@ fastapi
 uvicorn[standard]
 pyJWT
 python-dotenv
+google-genai
