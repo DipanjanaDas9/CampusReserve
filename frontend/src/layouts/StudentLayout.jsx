@@ -96,15 +96,6 @@ export function StudentLayout({ children }) {
       <main className="dashboard-main">
         <header className="dashboard-topbar">
           <Link
-            to="/search"
-            className="dashboard-search"
-            aria-label="Search spaces"
-          >
-            <Search aria-hidden="true" />
-            <span>Search spaces...</span>
-          </Link>
-
-          <Link
             to="/notifications"
             className="topbar-icon-button"
             aria-label="Notifications"

@@ -366,7 +366,6 @@ export function AdminDashboardPage() {
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-          <SampleDataLabel />
         </div>
         <p className="mt-1 text-sm text-muted-foreground">Monitor and manage campus space reservations</p>
 

@@ -269,6 +269,50 @@ async function toggleStatus(facility) {
   }
 }
 
+async function deleteFacility(facility) {
+  const confirmed = window.confirm(
+    `Are you sure you want to permanently delete "${facility.name}"?\n\n` +
+    "This action cannot be undone. Facilities with reservation history cannot be deleted."
+  );
+
+  if (!confirmed) return;
+
+  setNotice("");
+  setError("");
+
+  try {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) {
+      throw new Error("Please log in as an administrator.");
+    }
+
+    const response = await fetch(
+      `http://127.0.0.1:8000/facilities/${facility.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+
+      throw new Error(
+        data.detail || "Could not delete this facility."
+      );
+    }
+
+    // Refresh the page to retrieve the updated facility list.
+    window.location.reload();
+  } catch (err) {
+    setError(err.message || "Could not delete this facility.");
+  }
+}
+
+
 
   return (
     <AdminLayout active="facilities">
@@ -277,9 +321,8 @@ async function toggleStatus(facility) {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">Manage Facilities</h1>
-              <SampleDataLabel />
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">Add, edit, or deactivate campus spaces</p>
+            <p className="mt-1 text-sm text-muted-foreground">Add, edit, activate, deactivate, or delete campus spaces</p>
           </div>
           <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
             <Plus className="h-4 w-4" aria-hidden="true" /> Add Facility
@@ -372,7 +415,7 @@ async function toggleStatus(facility) {
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />
                         </button>
-                        <MoreActions facility={f} onToggle={() => toggleStatus(f)} />
+                        <MoreActions facility={f} onToggle={() => toggleStatus(f)}  onDelete={() => deleteFacility(f)}/>
                       </div>
                     </td>
                   </tr>
@@ -396,14 +439,23 @@ async function toggleStatus(facility) {
 }
 
 /** "More actions" menu; closes on Escape or when focus leaves it. */
-function MoreActions({ facility, onToggle }) {
+
+/** "More actions" menu; closes on Escape or when focus leaves it. */
+function MoreActions({ facility, onToggle, onDelete }) {
   const [open, setOpen] = useState(false);
-  const label = facility.status === "active" ? "Deactivate" : "Activate";
+
+  const label =
+    facility.status === "active" ? "Deactivate" : "Activate";
+
   return (
     <div
       className="relative"
-      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}
-      onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+      onBlur={(e) =>
+        !e.currentTarget.contains(e.relatedTarget) && setOpen(false)
+      }
+      onKeyDown={(e) =>
+        e.key === "Escape" && setOpen(false)
+      }
     >
       <button
         type="button"
@@ -415,8 +467,12 @@ function MoreActions({ facility, onToggle }) {
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
       </button>
+
       {open && (
-        <div role="menu" className="absolute right-0 z-10 mt-1 w-36 rounded-md border bg-card py-1 shadow-card">
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 w-44 rounded-md border bg-card py-1 shadow-card"
+        >
           <button
             type="button"
             role="menuitem"
@@ -425,15 +481,35 @@ function MoreActions({ facility, onToggle }) {
               setOpen(false);
               onToggle();
             }}
-            className={cn("block w-full px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none", facility.status === "active" ? "text-destructive" : "text-foreground")}
+            className={cn(
+              "block w-full px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none",
+              facility.status === "active"
+                ? "text-destructive"
+                : "text-foreground"
+            )}
           >
             {label}
+          </button>
+
+          <div className="my-1 border-t" />
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            className="block w-full px-3 py-2 text-left text-sm text-destructive hover:bg-accent focus:bg-accent focus:outline-none"
+          >
+            Delete Facility
           </button>
         </div>
       )}
     </div>
   );
 }
+
 
 /** Add / edit form in a native modal <dialog> (focus trap, Escape and backdrop handled by the browser). */
 function FacilityDialog({ facility, existingNames, onSave, onClose }) {

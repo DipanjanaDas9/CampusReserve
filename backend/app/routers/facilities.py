@@ -192,6 +192,7 @@ def update_facility_status(
     }
 
 
+
 @router.delete("/{facility_id}")
 def delete_facility(
     facility_id: int,
@@ -199,21 +200,56 @@ def delete_facility(
 ):
     with closing(get_connection()) as connection:
         try:
-            cursor = connection.execute(
-                "DELETE FROM facilities WHERE id = ?",
-                (facility_id,),
-            )
-            if cursor.rowcount == 0:
+            connection.execute("BEGIN IMMEDIATE")
+
+            facility = connection.execute(
+                """
+                SELECT id, name
+                FROM facilities
+                WHERE id = ?
+                """,
+                (facility_id,)
+            ).fetchone()
+
+            if facility is None:
                 raise HTTPException(
                     status_code=404,
                     detail="Facility not found"
                 )
+
+            reservation_count = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM reservations
+                WHERE facility_id = ?
+                """,
+                (facility_id,)
+            ).fetchone()[0]
+
+            if reservation_count > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This facility has reservation history and "
+                        "cannot be deleted. Deactivate it instead."
+                    )
+                )
+
+            connection.execute(
+                """
+                DELETE FROM facilities
+                WHERE id = ?
+                """,
+                (facility_id,)
+            )
+
             connection.commit()
+
         except Exception:
             connection.rollback()
             raise
 
     return {
         "message": "Facility deleted successfully",
-        "facility_id": facility_id,
+        "facility_id": facility_id
     }

@@ -169,16 +169,6 @@ const filteredFacilities = useMemo(() => {
 
       <main className="dashboard-main">
         <header className="dashboard-topbar">
-          <label className="dashboard-search">
-            <Search aria-hidden="true" />
-            <span className="sr-only">Search spaces</span>
-            <input
-              type="search"
-              placeholder="Search spaces..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-          </label>
           <Link
             to="/notifications"
             className="topbar-icon-button"
