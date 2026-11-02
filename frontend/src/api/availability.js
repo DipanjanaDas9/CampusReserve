@@ -1,4 +1,4 @@
-
+import { authenticatedFetch } from "./authenticatedFetch";
 import { API_BASE_URL } from "./auth";
 
 // One-hour slots: 8 AM through 6 PM.
@@ -60,11 +60,12 @@ function campusTimestamp(date, hour) {
 async function apiGet(path) {
   const token = sessionStorage.getItem("access_token");
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: token
-      ? { Authorization: `Bearer ${token}` }
-      : {},
-  });
+
+  const url = `${API_BASE_URL}${path}`;
+
+  const response = token
+    ? await authenticatedFetch(url)
+    : await fetch(url);
 
   const data = await response.json().catch(() => null);
 

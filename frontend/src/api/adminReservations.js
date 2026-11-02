@@ -1,5 +1,6 @@
 
 import { API_BASE_URL } from "./auth";
+import { authenticatedFetch } from "./authenticatedFetch";
 
 async function adminRequest(path, options = {}) {
   const token = sessionStorage.getItem("access_token");
@@ -8,7 +9,7 @@ async function adminRequest(path, options = {}) {
     throw new Error("Please sign in as an administrator.");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

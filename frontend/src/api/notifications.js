@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "./authenticatedFetch";
 import { API_BASE_URL } from "./auth";
 
 async function notificationRequest(path, options = {}) {
@@ -7,7 +8,7 @@ async function notificationRequest(path, options = {}) {
     throw new Error("Please log in to view notifications.");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,

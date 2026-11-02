@@ -1,3 +1,4 @@
+import { authenticatedFetch } from "./authenticatedFetch";
 const API_BASE_URL = (
   import.meta.env.VITE_BOOKING_API_BASE_URL ||
   "http://localhost:8000"
@@ -15,7 +16,7 @@ export async function submitReservation(req) {
   let res;
 
   try {
-    res = await fetch(`${API_BASE_URL}${RESERVATION_ENDPOINT}`, {
+    res = await authenticatedFetch(`${API_BASE_URL}${RESERVATION_ENDPOINT}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,9 +24,16 @@ export async function submitReservation(req) {
       },
       body: JSON.stringify(req),
     });
-  } catch {
-    throw new Error("Cannot connect to the reservation server.");
+  } catch (error) {
+  if (
+    error.message === "Your session has expired. Please sign in again." ||
+    error.message === "Please sign in again."
+  ) {
+    throw error;
   }
+
+  throw new Error("Cannot connect to the reservation server.");
+}
 
   const data = await res.json();
 
@@ -49,7 +57,7 @@ export async function submitReservation(req) {
 export async function getMyReservations() {
   const token = sessionStorage.getItem("access_token");
 
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${API_BASE_URL}/reservations/me`,
     {
       headers: {
@@ -74,7 +82,7 @@ export async function getMyReservations() {
 export async function cancelReservation(id) {
   const token = sessionStorage.getItem("access_token");
 
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${API_BASE_URL}/reservations/${id}/cancel`,
     {
       method: "PATCH",
@@ -108,7 +116,7 @@ export async function checkInReservation(id) {
   let response;
 
   try {
-    response = await fetch(
+    response = await authenticatedFetch(
       `${API_BASE_URL}/reservations/${id}/check-in`,
       {
         method: "PATCH",
@@ -117,9 +125,16 @@ export async function checkInReservation(id) {
         },
       }
     );
-  } catch {
-    throw new Error("Cannot connect to the reservation server.");
+  } catch (error) {
+  if (
+    error.message === "Your session has expired. Please sign in again." ||
+    error.message === "Please sign in again."
+  ) {
+    throw error;
   }
+
+  throw new Error("Cannot connect to the reservation server.");
+}
 
   const data = await response.json().catch(() => null);
 

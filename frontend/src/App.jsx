@@ -18,7 +18,78 @@ import { ManageFacilitiesPage } from "./pages/admin/ManageFacilitiesPage.jsx";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { ReportsPage } from "./pages/admin/ReportsPage";
 import { AdminNotificationsPage } from "./pages/admin/AdminNotificationsPage";
-function RequireLogin() { return sessionStorage.getItem("access_token") ? <Outlet /> : <Navigate to="/login" replace />; }
+import { useEffect, useState } from "react";
+
+function RequireLogin() {
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) return;
+
+    function expireSession() {
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("campus_user");
+      setExpired(true);
+    }
+
+    let expirationTime;
+
+    try {
+      const payload = JSON.parse(
+        atob(
+          token.split(".")[1]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/")
+        )
+      );
+
+      expirationTime = payload.exp * 1000;
+
+      if (!Number.isFinite(expirationTime)) {
+        throw new Error("Invalid token expiration");
+      }
+    } catch {
+      expireSession();
+      return;
+    }
+
+    const remainingTime = expirationTime - Date.now();
+
+    if (remainingTime <= 0) {
+      expireSession();
+      return;
+    }
+
+    // Automatically expire the session when the JWT expires.
+    const timer = setTimeout(expireSession, remainingTime);
+
+    // Also check when the user returns to the browser tab.
+    function checkExpiration() {
+      if (Date.now() >= expirationTime) {
+        expireSession();
+      }
+    }
+
+    window.addEventListener("focus", checkExpiration);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", checkExpiration);
+    };
+  }, []);
+
+  if (expired) {
+    return <Navigate to="/login?reason=expired" replace />;
+  }
+
+  if (!sessionStorage.getItem("access_token")) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
 export default function App() { return <BrowserRouter><Routes>
 <Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} />
 <Route element={<RequireLogin />}>
