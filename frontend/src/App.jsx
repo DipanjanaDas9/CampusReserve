@@ -17,6 +17,7 @@ import { ApprovalsPage } from "./pages/admin/ApprovalsPage.jsx";
 import { ManageFacilitiesPage } from "./pages/admin/ManageFacilitiesPage.jsx";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { ReportsPage } from "./pages/admin/ReportsPage";
+import { AdminNotificationsPage } from "./pages/admin/AdminNotificationsPage";
 function RequireLogin() { return sessionStorage.getItem("access_token") ? <Outlet /> : <Navigate to="/login" replace />; }
 export default function App() { return <BrowserRouter><Routes>
 <Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} />
@@ -34,6 +35,6 @@ export default function App() { return <BrowserRouter><Routes>
 <Route path="/admin/facilities" element={<ManageFacilitiesPage />} />
 <Route path="/admin/users" element={<UsersPage />} />
 <Route path="/admin/reports" element={<ReportsPage />} />
-<Route path="/admin/notifications" element={<ComingSoonPage active="notifications" title="Notifications" />} />
+<Route path="/admin/notifications" element={<AdminNotificationsPage/>} />
 </Route></Route>
 <Route path="*" element={<Navigate to="/" replace />} /></Routes></BrowserRouter>; }

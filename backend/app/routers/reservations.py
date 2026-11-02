@@ -175,6 +175,27 @@ def create_reservation(
                     ),
                 )
             )
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                SELECT
+                    id, ?, 'system', ?, ?
+                FROM users
+                WHERE role = 'admin'
+                AND id != ?
+                """,
+                (
+                    reservation_id,
+                    "New reservation request",
+                    (
+                        f"A new reservation request for {facility['name']} "
+                        "is awaiting administrator approval."
+                    ),
+                    current_user["id"],
+                )
+            )
+
 
             connection.commit()
 
@@ -266,6 +287,27 @@ def cancel_reservation(
                         f"Your reservation for {reservation['facility_name']} "
                         "has been successfully cancelled."
                     ),
+                )
+            )
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                SELECT
+                    id, ?, 'cancelled', ?, ?
+                FROM users
+                WHERE role = 'admin'
+                AND id != ?
+                """,
+                (
+                    reservation_id,
+                    "Reservation cancelled",
+                    (
+                        f"A reservation for {reservation['facility_name']} "
+                        "has been cancelled."
+                    ),
+                    current_user["id"],
                 )
             )
 
