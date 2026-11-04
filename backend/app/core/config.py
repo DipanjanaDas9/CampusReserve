@@ -1,6 +1,9 @@
 import os
 from zoneinfo import ZoneInfo
+from pathlib import Path
+from dotenv import load_dotenv
 
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 CAMPUS_TIMEZONE = ZoneInfo("America/Chicago")
 ALGORITHM = "HS256"
 

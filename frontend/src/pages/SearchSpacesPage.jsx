@@ -39,11 +39,34 @@ export function SearchSpacesPage() {
   const toggleEquipment = (item) =>
     setFilters((f) => ({ ...f, equipment: f.equipment.includes(item) ? f.equipment.filter((x) => x !== item) : [...f.equipment, item] }));
 
-  const locations = useMemo(() => [...new Set((rooms ?? []).map((r) => r.location))].sort(), [rooms]);
+
+  const locations = useMemo(
+    () =>
+      [
+        ...new Set(
+          (rooms ?? [])
+            .map((room) => room.location)
+            .filter(Boolean)
+        ),
+      ].sort(),
+    [rooms]
+  );
+
   const shown = useMemo(
-    () => (rooms ? sortRooms(filterFacilities(rooms, { minCapacity: Number(applied.groupSize), equipment: applied.equipment, location: applied.location }), sortBy) : []),
+    () =>
+      rooms
+        ? sortRooms(
+            filterFacilities(rooms, {
+              minCapacity: Number(applied.groupSize),
+              equipment: applied.equipment,
+              location: applied.location,
+            }),
+            sortBy
+          )
+        : [],
     [rooms, applied, sortBy]
   );
+
 
   return (
     <StudentLayout active="search">

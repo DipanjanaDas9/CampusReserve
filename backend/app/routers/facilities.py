@@ -1,7 +1,6 @@
-
 import json
 from contextlib import closing
-
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.connection import get_connection
@@ -13,6 +12,9 @@ router = APIRouter(
     prefix="/facilities",
     tags=["Facilities"]
 )
+class FacilityStatusUpdate(BaseModel):
+    is_active: bool
+
 
 
 def facility_to_dict(facility):
@@ -26,7 +28,9 @@ def facility_to_dict(facility):
         "opening_time": facility["opening_time"],
         "closing_time": facility["closing_time"],
         "restrictions": facility["restrictions"],
+        "is_active": bool(facility["is_active"]),
     }
+
 
 
 @router.get("")
@@ -138,6 +142,57 @@ def update_facility(
     }
 
 
+
+@router.patch("/{facility_id}/status")
+def update_facility_status(
+    facility_id: int,
+    status: FacilityStatusUpdate,
+    admin: dict = Depends(require_admin)
+):
+    with closing(get_connection()) as connection:
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+
+            cursor = connection.execute(
+                """
+                UPDATE facilities
+                SET is_active = ?
+                WHERE id = ?
+                """,
+                (
+                    1 if status.is_active else 0,
+                    facility_id,
+                ),
+            )
+
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Facility not found"
+                )
+
+            facility = connection.execute(
+                "SELECT * FROM facilities WHERE id = ?",
+                (facility_id,),
+            ).fetchone()
+
+            connection.commit()
+
+        except Exception:
+            connection.rollback()
+            raise
+
+    return {
+        "message": (
+            "Facility activated successfully"
+            if status.is_active
+            else "Facility deactivated successfully"
+        ),
+        "facility": facility_to_dict(facility),
+    }
+
+
+
 @router.delete("/{facility_id}")
 def delete_facility(
     facility_id: int,
@@ -145,21 +200,56 @@ def delete_facility(
 ):
     with closing(get_connection()) as connection:
         try:
-            cursor = connection.execute(
-                "DELETE FROM facilities WHERE id = ?",
-                (facility_id,),
-            )
-            if cursor.rowcount == 0:
+            connection.execute("BEGIN IMMEDIATE")
+
+            facility = connection.execute(
+                """
+                SELECT id, name
+                FROM facilities
+                WHERE id = ?
+                """,
+                (facility_id,)
+            ).fetchone()
+
+            if facility is None:
                 raise HTTPException(
                     status_code=404,
                     detail="Facility not found"
                 )
+
+            reservation_count = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM reservations
+                WHERE facility_id = ?
+                """,
+                (facility_id,)
+            ).fetchone()[0]
+
+            if reservation_count > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This facility has reservation history and "
+                        "cannot be deleted. Deactivate it instead."
+                    )
+                )
+
+            connection.execute(
+                """
+                DELETE FROM facilities
+                WHERE id = ?
+                """,
+                (facility_id,)
+            )
+
             connection.commit()
+
         except Exception:
             connection.rollback()
             raise
 
     return {
         "message": "Facility deleted successfully",
-        "facility_id": facility_id,
+        "facility_id": facility_id
     }

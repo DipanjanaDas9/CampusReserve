@@ -7,7 +7,9 @@ from app.routers.auth import router as auth_router
 from app.routers.facilities import router as facilities_router
 from app.routers.reservations import router as reservations_router
 from app.routers.admin import router as admin_router
-
+from app.routers.availability import router as availability_router
+from app.routers.notifications import router as notifications_router
+from app.routers.ai import router as ai_router
 
 app = FastAPI(title="Campus Reservation API")
 
@@ -28,7 +30,9 @@ app.include_router(auth_router)
 app.include_router(facilities_router)
 app.include_router(reservations_router)
 app.include_router(admin_router)
-
+app.include_router(availability_router)
+app.include_router(notifications_router)
+app.include_router(ai_router)
 
 @app.get("/")
 def home():

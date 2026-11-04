@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { AuthLayout } from "../../layouts/AuthLayout";
@@ -22,6 +22,8 @@ function FieldError({ id, msg }) {
 }
 export function LoginPage() {
     const [email, setEmail] = useState("");
+    const [searchParams] = useSearchParams();
+    const sessionExpired = searchParams.get("reason") === "expired";
     const [password, setPassword] = useState("");
     const [role, setRole] = useState("student");
     const [show, setShow] = useState(false);
@@ -65,6 +67,23 @@ export function LoginPage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
         <h1 className="font-display text-2xl font-bold text-foreground">Welcome Back</h1>
         <p className="mt-1 text-sm text-muted-foreground">Sign in to your account to continue.</p>
+        {sessionExpired && (
+          <div
+            role="status"
+            className="mt-5 flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-4 text-sm text-foreground"
+          >
+            <Info
+              className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="font-semibold">Session expired</p>
+              <p className="mt-1 text-muted-foreground">
+                Your session has expired. Please sign in again.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div role="tablist" aria-label="Account type" className="mt-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
           {["student", "admin"].map((r) => (<button key={r} type="button" role="tab" aria-selected={role === r} onClick={() => { setRole(r); setNotice(null); }} className={`rounded-md py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${role === r ? "bg-primary text-primary-foreground shadow-brand" : "text-muted-foreground hover:text-foreground"}`}>
@@ -106,8 +125,13 @@ export function LoginPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Session lasts until this tab closes.</span>
-            <button type="button" onClick={() => setNotice({kind:"info",text:"Password reset is not supported by the current backend."})} className="text-sm font-medium text-primary hover:underline">Forgot Password?</button>
+            <span className="text-xs text-muted-foreground">Sessions expire after 1 hour or when the tab closes.</span>
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
           </div>
 
           <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70">

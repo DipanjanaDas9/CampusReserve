@@ -50,17 +50,27 @@ export default function Dashboard() {
     .join("")
     .toUpperCase() || "ST";
 
-  const filteredFacilities = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return facilities;
 
-    return facilities.filter((facility) =>
-      [facility.name, ...(facility.equipment || [])]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [facilities, searchTerm]);
+
+const activeFacilities = useMemo(
+  () => facilities.filter((facility) => facility.is_active === true),
+  [facilities]
+);
+
+const filteredFacilities = useMemo(() => {
+  const query = searchTerm.trim().toLowerCase();
+
+  if (!query) return activeFacilities;
+
+  return activeFacilities.filter((facility) =>
+    [facility.name, ...(facility.equipment || [])]
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  );
+}, [activeFacilities, searchTerm]);
+
+
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -159,16 +169,6 @@ export default function Dashboard() {
 
       <main className="dashboard-main">
         <header className="dashboard-topbar">
-          <label className="dashboard-search">
-            <Search aria-hidden="true" />
-            <span className="sr-only">Search spaces</span>
-            <input
-              type="search"
-              placeholder="Search spaces..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
-          </label>
           <Link
             to="/notifications"
             className="topbar-icon-button"
@@ -213,7 +213,7 @@ export default function Dashboard() {
                 <span>Spaces to Explore</span>
               </div>
               <strong className="stat-value green-text">
-                {loading ? "…" : facilities.length}
+                {loading ? "…" : activeFacilities.length}
               </strong>
             </Link>
             <Link to="/availability" className="dashboard-stat quick-book-stat">

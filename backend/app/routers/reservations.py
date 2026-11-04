@@ -28,7 +28,11 @@ def get_my_reservations(
                 r.end_time,
                 r.status,
                 r.checked_in_at,
+                r.attendees,
+                r.purpose,
+                r.notes,
                 r.created_at
+                
             FROM reservations r
             JOIN facilities f ON r.facility_id = f.id
             WHERE r.user_id = ?
@@ -82,7 +86,7 @@ def create_reservation(
 
             facility = connection.execute(
                 """
-                SELECT id, opening_time, closing_time
+                SELECT id, name, capacity, opening_time, closing_time, is_active
                 FROM facilities
                 WHERE id = ?
                 """,
@@ -93,6 +97,19 @@ def create_reservation(
                 raise HTTPException(
                     status_code=404,
                     detail="Facility not found"
+                )
+            if not facility["is_active"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This facility is currently inactive and cannot be reserved"
+                )
+            if reservation.attendees > facility["capacity"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Room capacity is {facility['capacity']}, "
+                        f"but {reservation.attendees} attendees were requested"
+                    )
                 )
 
             # Check room operating hours before checking booking conflicts.
@@ -124,19 +141,64 @@ def create_reservation(
             cursor = connection.execute(
                 """
                 INSERT INTO reservations
-                (user_id, facility_id, start_time, end_time)
-                VALUES (?, ?, ?, ?)
+                (user_id, facility_id, start_time, end_time,attendees, purpose, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     current_user["id"],
                     reservation.facility_id,
                     start_str,
                     end_str,
+                    reservation.attendees,
+                    reservation.purpose.strip(),
+                    reservation.notes,
                 )
             )
 
-            connection.commit()
+            
             reservation_id = cursor.lastrowid
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    current_user["id"],
+                    reservation_id,
+                    "system",
+                    "Reservation request submitted",
+                    (
+                        f"Your reservation request for {facility['name']} "
+                        "has been submitted and is awaiting administrator approval."
+                    ),
+                )
+            )
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                SELECT
+                    id, ?, 'system', ?, ?
+                FROM users
+                WHERE role = 'admin'
+                AND id != ?
+                """,
+                (
+                    reservation_id,
+                    "New reservation request",
+                    (
+                        f"A new reservation request for {facility['name']} "
+                        "is awaiting administrator approval."
+                    ),
+                    current_user["id"],
+                )
+            )
+
+
+            connection.commit()
+
 
         except Exception:
             connection.rollback()
@@ -150,6 +212,9 @@ def create_reservation(
             "facility_id": reservation.facility_id,
             "start_time": start_str,
             "end_time": end_str,
+            "attendees": reservation.attendees,
+            "purpose": reservation.purpose.strip(),
+            "notes": reservation.notes,
             "status": "pending"
         }
     }
@@ -165,9 +230,14 @@ def cancel_reservation(
 
             reservation = connection.execute(
                 """
-                SELECT id, user_id, status
-                FROM reservations
-                WHERE id = ?
+                SELECT
+                    r.id,
+                    r.user_id,
+                    r.status,
+                    f.name AS facility_name
+                FROM reservations r
+                JOIN facilities f ON r.facility_id = f.id
+                WHERE r.id = ?
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -192,6 +262,7 @@ def cancel_reservation(
                     detail="This reservation cannot be cancelled"
                 )
 
+
             connection.execute(
                 """
                 UPDATE reservations
@@ -201,7 +272,47 @@ def cancel_reservation(
                 (reservation_id,)
             )
 
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    current_user["id"],
+                    reservation_id,
+                    "cancelled",
+                    "Reservation cancelled",
+                    (
+                        f"Your reservation for {reservation['facility_name']} "
+                        "has been successfully cancelled."
+                    ),
+                )
+            )
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                SELECT
+                    id, ?, 'cancelled', ?, ?
+                FROM users
+                WHERE role = 'admin'
+                AND id != ?
+                """,
+                (
+                    reservation_id,
+                    "Reservation cancelled",
+                    (
+                        f"A reservation for {reservation['facility_name']} "
+                        "has been cancelled."
+                    ),
+                    current_user["id"],
+                )
+            )
+
             connection.commit()
+
 
         except Exception:
             connection.rollback()
@@ -213,6 +324,7 @@ def cancel_reservation(
         "status": "cancelled"
     }
 
+@router.patch("/{reservation_id}/check-in")
 def check_in_reservation(
     reservation_id: int,
     current_user: dict = Depends(get_current_user)

@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, FileText, MapPin, NotebookPen, Search, User, Users, X } from "lucide-react";
 import { AdminLayout } from "../../layouts/AdminLayout";
-import { SampleDataLabel } from "../../components/SampleDataLabel";
-import { SAMPLE_REQUESTS } from "../../data/sampleAdmin";
-import { findSampleRoom } from "../../data/sampleRooms";
+import {
+  getAdminReservations,
+  decideAdminReservation,
+} from "../../api/adminReservations";
 import { formatDate, formatDuration, formatTimeRange } from "../../lib/datetime";
 import { cn } from "../../lib/utils";
 
@@ -20,7 +21,8 @@ const STATUS_STYLES = {
   rejected: "bg-destructive/10 text-foreground",
 };
 
-const roomName = (id) => findSampleRoom(id)?.name ?? id;
+const roomName = (id, requests) =>
+  requests.find((r) => r.roomId === String(id))?.roomName ?? id;
 const initials = (name) => name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
 const approveClass =
@@ -28,14 +30,89 @@ const approveClass =
 const rejectClass =
   "inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/50 bg-card px-3 py-1.5 text-sm font-semibold text-destructive hover:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
+function campusDateParts(timestamp) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(timestamp));
+
+  const value = (type) =>
+    parts.find((part) => part.type === type)?.value;
+
+  return {
+    date: `${value("year")}-${value("month")}-${value("day")}`,
+    time: `${value("hour")}:${value("minute")}`,
+  };
+}
+
+function mapReservation(r) {
+  const start = campusDateParts(r.start_time);
+  const end = campusDateParts(r.end_time);
+
+  return {
+    id: r.id,
+    event: r.purpose || `Reservation #${r.id}`,
+    description: r.purpose || "No purpose provided.",
+    requester: {
+      name: r.requester_name || r.requester_email || "Student",
+      email: r.requester_email || "",
+    },
+    roomId: String(r.facility_id),
+    roomName: r.facility_name,
+    date: start.date,
+    start: start.time,
+    end: end.time,
+    attendees: r.attendees,
+    notes: r.notes || "",
+    status: r.status === "denied" ? "rejected" : r.status,
+    reason: "",
+  };
+}
+
 export function ApprovalsPage() {
-  const [requests, setRequests] = useState(SAMPLE_REQUESTS);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("pending");
   const [query, setQuery] = useState("");
   const [room, setRoom] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [rejecting, setRejecting] = useState(false);
   const [notice, setNotice] = useState("");
+  
+useEffect(() => {
+  let active = true;
+
+  async function loadReservations() {
+    try {
+      const data = await getAdminReservations();
+
+      if (active) {
+        setRequests(data.map(mapReservation));
+      }
+    } catch (err) {
+      if (active) {
+        setNotice(err.message);
+      }
+    } finally {
+      if (active) {
+        setLoading(false);
+      }
+    }
+  }
+
+  loadReservations();
+
+  return () => {
+    active = false;
+  };
+}, []);
+
 
   const counts = useMemo(() => {
     const c = { all: requests.length };
@@ -52,20 +129,46 @@ export function ApprovalsPage() {
     );
   });
   const selected = requests.find((r) => r.id === selectedId) ?? null;
-  const roomIds = [...new Set(SAMPLE_REQUESTS.map((r) => r.roomId))];
-
+  const roomIds = [...new Set(requests.map((r) => r.roomId))];
   function open(request, startRejecting = false) {
     setSelectedId(request.id);
     setRejecting(startRejecting);
     setNotice("");
   }
 
-  function decide(id, status, reason = "") {
-    const request = requests.find((r) => r.id === id);
-    setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status, reason } : r)));
+
+async function decide(id, status, reason = "") {
+  if (saving) return;
+
+  const request = requests.find((r) => r.id === id);
+  if (!request) return;
+
+  setSaving(true);
+  setNotice("");
+
+  try {
+    const backendStatus =
+      status === "rejected" ? "denied" : status;
+
+    await decideAdminReservation(id, backendStatus);
+
+    const updated = await getAdminReservations();
+
+    setRequests(updated.map(mapReservation));
     setRejecting(false);
-    setNotice(`${request.event} ${status === "approved" ? "approved" : "rejected"}.`);
+
+    setNotice(
+      `${request.event} ${
+        status === "approved" ? "approved" : "rejected"
+      } successfully.`
+    );
+  } catch (err) {
+    setNotice(err.message || "Could not update reservation.");
+  } finally {
+    setSaving(false);
   }
+}
+
 
   return (
     <AdminLayout active="requests">
@@ -74,7 +177,6 @@ export function ApprovalsPage() {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground md:text-3xl">Reservation Requests</h1>
-              <SampleDataLabel />
             </div>
             <p className="mt-1 text-muted-foreground">Review and approve or reject room reservation requests.</p>
           </div>
@@ -96,7 +198,7 @@ export function ApprovalsPage() {
                 <option value="">All Rooms</option>
                 {roomIds.map((id) => (
                   <option key={id} value={id}>
-                    {roomName(id)}
+                    {roomName(id, requests)}
                   </option>
                 ))}
               </select>
@@ -137,7 +239,11 @@ export function ApprovalsPage() {
               <tbody>
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">No {tab === "all" ? "" : tab} requests match.</td>
+                    <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                      {loading
+                        ? "Loading reservations..."
+                        : `No ${tab === "all" ? "" : tab} requests match.`}
+                    </td>                  
                   </tr>
                 )}
                 {shown.map((r) => (
@@ -161,7 +267,7 @@ export function ApprovalsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-foreground">{roomName(r.roomId)}</td>
+                    <td className="px-4 py-3 text-foreground">{roomName(r.roomId, requests)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-foreground">
                       {formatDate(r.date)}
                       <span className="block text-xs text-muted-foreground">{formatTimeRange(r.start, r.end)}</span>
@@ -184,15 +290,18 @@ export function ApprovalsPage() {
           </div>
 
           {selected && (
+           
             <DetailPanel
               key={selected.id}
               request={selected}
+              requests={requests}
               rejecting={rejecting}
               setRejecting={setRejecting}
               onApprove={() => decide(selected.id, "approved")}
               onReject={(reason) => decide(selected.id, "rejected", reason)}
               onClose={() => setSelectedId(null)}
             />
+
           )}
         </div>
       </div>
@@ -204,15 +313,22 @@ function StatusBadge({ status }) {
   return <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium capitalize", STATUS_STYLES[status])}>{status}</span>;
 }
 
-function DetailPanel({ request: r, rejecting, setRejecting, onApprove, onReject, onClose }) {
-  const [reason, setReason] = useState("");
+function DetailPanel({
+  request: r,
+  requests,
+  rejecting,
+  setRejecting,
+  onApprove,
+  onReject,
+  onClose,
+}) {  const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const reasonRef = useRef(null);
   const rows = [
     { icon: User, label: "Requester", value: <>{r.requester.name}<span className="block text-xs text-muted-foreground">Student ({r.requester.email})</span></> },
     { icon: CalendarDays, label: "Event Name", value: r.event },
     { icon: FileText, label: "Description", value: r.description },
-    { icon: MapPin, label: "Room", value: roomName(r.roomId) },
+    { icon: MapPin, label: "Room", value: roomName(r.roomId, requests) },
     { icon: CalendarDays, label: "Date & Time", value: <>{formatDate(r.date)}<span className="block">{formatTimeRange(r.start, r.end)} ({formatDuration(r.start, r.end)})</span></> },
     { icon: Users, label: "Expected Attendees", value: r.attendees },
     { icon: NotebookPen, label: "Additional Notes", value: r.notes || "No additional notes." },

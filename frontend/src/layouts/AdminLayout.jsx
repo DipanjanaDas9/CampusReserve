@@ -19,8 +19,8 @@ export function AdminLayout({ active, children }) {
   const initials = user?.name?.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "AD";
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
-      <aside className="flex w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:w-60">
-        <div className="flex items-center gap-2 px-5 py-6 text-base font-bold">
+      <aside className="flex w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:h-screen md:w-60 md:self-start md:overflow-y-auto">
+          <div className="flex items-center gap-2 px-5 py-6 text-base font-bold">
           <Building2 className="h-6 w-6 shrink-0 text-sidebar-primary" aria-hidden="true" />
           CampusReserve
         </div>
