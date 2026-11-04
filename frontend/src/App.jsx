@@ -19,6 +19,8 @@ import { UsersPage } from "./pages/admin/UsersPage";
 import { ReportsPage } from "./pages/admin/ReportsPage";
 import { AdminNotificationsPage } from "./pages/admin/AdminNotificationsPage";
 import { useEffect, useState } from "react";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage.jsx";
 
 function RequireLogin() {
   const [expired, setExpired] = useState(false);
@@ -92,6 +94,8 @@ function RequireLogin() {
 }
 export default function App() { return <BrowserRouter><Routes>
 <Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} />
+<Route path="/forgot-password" element={<ForgotPasswordPage />} />
+<Route path="/reset-password" element={<ResetPasswordPage />} />
 <Route element={<RequireLogin />}>
 <Route path="/" element={<Dashboard />} /><Route path="/dashboard" element={<Navigate to="/" replace />} />
 <Route path="/availability" element={<AvailabilityPage />} /><Route path="/reservations" element={<MyReservationsPage />} />
@@ -107,5 +111,7 @@ export default function App() { return <BrowserRouter><Routes>
 <Route path="/admin/users" element={<UsersPage />} />
 <Route path="/admin/reports" element={<ReportsPage />} />
 <Route path="/admin/notifications" element={<AdminNotificationsPage/>} />
+
 </Route></Route>
+
 <Route path="*" element={<Navigate to="/" replace />} /></Routes></BrowserRouter>; }

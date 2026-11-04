@@ -65,3 +65,29 @@ def decode_access_token(token: str) -> int:
     )
 
     return int(payload["sub"])
+
+
+def create_access_token(
+    user_id: int,
+    session_version: int = 0,
+) -> str:
+    """Generate a JWT valid for one hour."""
+    payload = {
+        "sub": str(user_id),
+        "sv": session_version,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+    }
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+def decode_access_token_claims(token: str) -> dict:
+    """Validate a JWT and return its claims."""
+    return jwt.decode(
+        token,
+        SECRET_KEY,
+        algorithms=[ALGORITHM],
+    )

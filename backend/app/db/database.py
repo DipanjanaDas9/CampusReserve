@@ -103,6 +103,15 @@ def initialize_database():
                 """
             )
 
+        # Allow existing JWT sessions to be invalidated
+        # after a password reset.
+        if "session_version" not in user_column_names:
+            connection.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0
+                """
+            )
         # 5. Check reservations table columns
         reservation_columns = connection.execute(
             "PRAGMA table_info(reservations)"
@@ -164,6 +173,23 @@ def initialize_database():
                 CHECK (is_active IN (0, 1))
                 """
             )
+
+        # Password recovery: temporary, single-use reset tokens.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL,
+                used_at TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id)
+                    REFERENCES users(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
 
 
         # 6. Save changes

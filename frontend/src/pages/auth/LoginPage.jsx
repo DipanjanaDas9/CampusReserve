@@ -126,7 +126,12 @@ export function LoginPage() {
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Sessions expire after 1 hour or when the tab closes.</span>
-            <button type="button" onClick={() => setNotice({kind:"info",text:"Password reset is not supported by the current backend."})} className="text-sm font-medium text-primary hover:underline">Forgot Password?</button>
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
           </div>
 
           <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70">

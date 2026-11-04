@@ -1,4 +1,3 @@
-
 from contextlib import closing
 
 import jwt
@@ -6,8 +5,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.db.connection import get_connection
-from app.core.security import decode_access_token
-
+from app.core.security import decode_access_token_claims
 
 security = HTTPBearer(auto_error=False)
 
@@ -23,8 +21,9 @@ def get_current_user(
         )
 
     try:
-        user_id = decode_access_token(credentials.credentials)
-
+        payload = decode_access_token_claims(credentials.credentials)
+        user_id = int(payload["sub"])
+        session_version = int(payload.get("sv", 0))
     except (jwt.InvalidTokenError, ValueError, KeyError, TypeError):
         raise HTTPException(
             status_code=401,
@@ -34,7 +33,7 @@ def get_current_user(
 
     with closing(get_connection()) as connection:
         user = connection.execute(
-            "SELECT id, name, email, role FROM users WHERE id = ?",
+            "SELECT id, name, email, role, session_version FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
 
@@ -45,8 +44,19 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return dict(user)
+    if session_version != user["session_version"]:
+        raise HTTPException(
+            status_code=401,
+            detail="Session expired. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
+    return {
+        "id": user["id"],
+        "name": user["name"],
+        "email": user["email"],
+        "role": user["role"],
+    }
 
 def require_admin(
     current_user: dict = Depends(get_current_user)
