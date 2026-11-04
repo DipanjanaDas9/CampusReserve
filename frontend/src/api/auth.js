@@ -1,4 +1,9 @@
 
+/*
+ * CampusReserve Authentication API
+ * Matches the FastAPI backend endpoints without /api/v1.
+ */
+
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
@@ -36,7 +41,7 @@ async function post(path, payload) {
 }
 
 export async function login({ email, password, role }) {
-  // The backend authenticates both students and administrators.
+  // The backend authenticates students and administrators.
   const data = await post("/auth/login", { email, password });
 
   if (!data?.access_token || !data?.user) {
@@ -83,6 +88,7 @@ export async function resetPassword(token, newPassword) {
     new_password: newPassword,
   });
 }
+
 export async function validateResetToken(token) {
   return post("/auth/validate-reset-token", { token });
 }

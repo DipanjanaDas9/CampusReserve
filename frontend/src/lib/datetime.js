@@ -39,3 +39,33 @@ export function formatDuration(start, end) {
   if (Number.isInteger(hours)) return `${hours} hour${hours === 1 ? "" : "s"}`;
   return `${Math.floor(hours)} h ${minutes % 60} min`;
 }
+
+// The campus is in America/Chicago (backend/app/core/config.py). Reservations are
+// sent as ISO times with the campus UTC offset, which changes with daylight saving.
+export const CAMPUS_TIME_ZONE = "America/Chicago";
+
+/** Offset of the campus time zone at a given instant, e.g. "-05:00". */
+function campusOffset(date) {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone: CAMPUS_TIME_ZONE, timeZoneName: "longOffset" })
+    .formatToParts(date)
+    .find((p) => p.type === "timeZoneName").value; // "GMT-05:00" (or "GMT" at offset 0)
+  return name === "GMT" ? "+00:00" : name.slice(3);
+}
+
+/** "2026-10-30" + "14:00" (campus wall clock) -> "2026-10-30T14:00:00-05:00". */
+export function campusISO(isoDate, hhmm) {
+  // Start from the wall-clock time read as UTC, then correct by the campus offset at that moment.
+  const asUtc = new Date(`${isoDate}T${hhmm}:00Z`);
+  let offset = campusOffset(asUtc);
+  const shift = (o) => (o.startsWith("-") ? 1 : -1) * (Number(o.slice(1, 3)) * 60 + Number(o.slice(4, 6))) * 60000;
+  offset = campusOffset(new Date(asUtc.getTime() + shift(offset)));
+  return `${isoDate}T${hhmm}:00${offset}`;
+}
+
+/** Backend timestamp (UTC ISO) -> campus date and time parts for display. */
+export function campusParts(isoTimestamp) {
+  const d = new Date(isoTimestamp);
+  const date = d.toLocaleDateString("en-US", { timeZone: CAMPUS_TIME_ZONE, weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { timeZone: CAMPUS_TIME_ZONE, hour: "numeric", minute: "2-digit" });
+  return { date, time };
+}

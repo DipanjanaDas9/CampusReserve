@@ -48,39 +48,42 @@ export function BookPage() {
     const [space, setSpace] = useState(null);
     const [roomError, setRoomError] = useState("");
 
-  useEffect(() => {
-    let active = true;
+    useEffect(() => {
+      let active = true;
 
-    async function loadRoom() {
-      try {
-        const facilities = await getFacilities();
+      async function loadRoom() {
+        try {
+          const facilities = await getFacilities();
 
-        if (!active) return;
+          if (!active) return;
 
-        const selectedRoom = facilities.find(
-          (facility) => String(facility.id) === String(id)
-        );
+          const selectedRoom = facilities.find(
+            (facility) => String(facility.id) === String(id)
+          );
 
-        if (!selectedRoom) {
-          setRoomError("Facility not found.");
-          return;
-        }
+          if (!selectedRoom) {
+            setRoomError("Facility not found.");
+            return;
+          }
 
-        setSpace(selectedRoom);
-        setRoomError("");
-      } catch (err) {
-        if (active) {
-          setRoomError(err.message || "Could not load facility.");
+          setSpace(selectedRoom);
+          setRoomError("");
+        } catch (err) {
+          if (active) {
+            setRoomError(
+              err.message || "Could not load facility."
+            );
+          }
         }
       }
-    }
 
-    loadRoom();
+      loadRoom();
 
-    return () => {
-      active = false;
-    };
-  }, [id]);
+      return () => {
+        active = false;
+      };
+    }, [id]);
+
     const [purpose, setPurpose] = useState("");
     const [attendees, setAttendees] = useState("1");
     const [notes, setNotes] = useState("");
