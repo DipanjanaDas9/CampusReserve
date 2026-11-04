@@ -4,7 +4,7 @@ import re
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-
+from email.headerregistry import Address
 from app.db.connection import get_connection
 from app.schemas.user import RegisterRequest, LoginRequest
 from app.core.security import (
@@ -156,7 +156,10 @@ def send_password_reset_email(email: str, token: str):
 
     message = EmailMessage()
     message["Subject"] = "CampusReserve Password Reset"
-    message["From"] = sender
+    message["From"] = Address(
+        display_name="CampusReserve",
+        addr_spec=sender,
+    )
     message["To"] = email
 
     message.set_content(
