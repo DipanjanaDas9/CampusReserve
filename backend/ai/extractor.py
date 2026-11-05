@@ -11,7 +11,12 @@ from .provider import get_ai_model, get_gemini_client
 class RoomRequirements(BaseModel):
     """Room requirements extracted from a user's natural-language request."""
 
+    building_name: str | None = Field(default=None, description="Explicitly requested building, or null")
+    floor_number: int | None = Field(default=None, description="Floor as an integer: third floor = 3, ground floor = 0, basement = -1; null if unspecified")
+    room_number: str | None = Field(default=None, description="Explicitly requested room number, or null")
+    room_type: str | None = Field(default=None, description="Explicit room type such as study room, computer lab, meeting room, or null")
     group_size: int | None = Field(
+        ge=1,
         description="Number of people who need the room, or null if unspecified."
     )
     date: str | None = Field(
@@ -54,6 +59,14 @@ def extract_room_requirements(
                 "You extract room-booking requirements for CampusReserve. "
                 "Return data matching the supplied schema. "
                 "Never invent details the user did not provide. "
+                "Extract building, floor, room number, and room type only when explicitly requested. "
+                "Capacity is maximum occupants; never infer live occupancy. "
+                "Convert ordinal floors to integers: third floor means 3, ground floor means 0, basement means -1. "
+                "Preserve building mentions such as 'the library'; do not invent a formal building name. "
+                "Normalize room types: study room, computer lab, laboratory, conference room, meeting room, multipurpose room, collaboration room. "
+                "For example, 'a study room for 6 people on the third floor of the library tomorrow with a projector' "
+                "means group_size 6, floor_number 3, building_name library, room_type study room, equipment [projector], "
+                "and tomorrow's date. Start and end times remain null and must be requested. "
                 "Use null for unknown group size, date, start time, or end time. "
                 "Use an empty equipment list when no equipment is requested. "
                 "Convert dates to YYYY-MM-DD and times to 24-hour HH:MM. "

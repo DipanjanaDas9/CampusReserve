@@ -153,7 +153,7 @@ useEffect(() => {
             <select value={spaceId} onChange={(e) => {setSelection(null);setData(null);setError(null);setSpaceId(e.target.value);}} className="h-10 rounded-md border border-input bg-card pl-9 pr-8 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring">
               {spaces.map((s) => (
               <option key={s.id} value={String(s.id)}>
-                {s.name}
+                {s.name}{s.floor_number != null ? ` · Floor ${s.floor_number}` : ""}
               </option>
             ))}
             </select>
@@ -184,6 +184,8 @@ useEffect(() => {
             <p className="py-10 text-center text-sm text-muted-foreground">
               Loading room availability...
             </p>
+          ) : !spaceId ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">No active database rooms are available. Ask an administrator to add or activate a facility.</p>
           ) : (
             <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px] table-fixed border-collapse text-xs">

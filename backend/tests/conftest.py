@@ -15,6 +15,8 @@ BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND))
 os.environ.setdefault("CAMPUSRESERVE_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters")
 
+os.environ["CAMPUSRESERVE_SEED_DEMO"] = "0"
+
 # Point the database at a temporary file before main.py is imported:
 # importing it runs initialize_database() against DATABASE_PATH.
 from app.db import connection as db_connection  # noqa: E402

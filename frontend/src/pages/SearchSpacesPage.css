@@ -73,3 +73,15 @@
 @media (max-width: 700px) { .spaces-hero { align-items: stretch; flex-direction: column; gap: 22px; padding-top: 8px; } .spaces-ai-link { width: 100%; display: grid; grid-template-columns: 40px 1fr; gap: 5px 14px; padding: 16px; } .spaces-ai-icon { grid-row: 1 / 3; } .spaces-ai-link > span:not(.spaces-ai-icon) { grid-column: 2; } .spaces-ai-link > span br { display: none; } .spaces-ai-link b { grid-column: 2; margin-top: 6px; } .spaces-filter-grid { grid-template-columns: 100px minmax(0, 1fr); gap: 16px; } .spaces-search-button { grid-column: 1 / -1; grid-row: 3; } .spaces-filters { padding: 20px; } .spaces-equipment legend { float: none; margin-bottom: 9px; } }
 @media (max-width: 480px) { .spaces-results-grid, .spaces-loading { grid-template-columns: minmax(0, 1fr); } .spaces-steps { gap: 8px; font-size: 9px; } .spaces-steps i { width: 8px; } .spaces-results-heading { align-items: flex-start; } .spaces-hero h1 { font-size: 32px; } }
 @media (prefers-reduced-motion: reduce) { .spaces-page *, .spaces-page *::before { transition: none !important; } }
+
+/* Add the catalog floor control while retaining the existing filter layout. */
+.spaces-filter-grid { grid-template-columns: 100px minmax(140px, 1fr) 105px 145px; }
+.spaces-filter-grid .spaces-floor-filter { grid-column: 3; grid-row: 1; }
+.spaces-filter-grid .spaces-search-button { grid-column: 4; }
+.spaces-filter-grid select { min-width: 0; height: 44px; border-radius: 9px; background: oklch(0.985 0.003 255); }
+@media (max-width: 900px) {
+  .spaces-filter-grid { grid-template-columns: 100px minmax(0, 1fr); }
+  .spaces-filter-grid .spaces-floor-filter { grid-column: 1; grid-row: 2; }
+  .spaces-filter-grid .spaces-search-button { grid-column: 2; grid-row: 2; }
+  .spaces-filter-grid .spaces-equipment { grid-row: 3; }
+}

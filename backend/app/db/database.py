@@ -1,10 +1,12 @@
 
 from contextlib import closing
+from .catalog import migrate_catalog
 from .connection import get_connection
 
 
 def initialize_database():
-    with closing(get_connection()) as connection:
+    with closing(get_connection()) as connection, connection:
+        connection.execute("BEGIN IMMEDIATE")
 
         # 1. Create users table
         connection.execute(
@@ -200,6 +202,8 @@ def initialize_database():
             """
         )
 
+
+        migrate_catalog(connection)
 
         # 6. Save changes
         connection.commit()

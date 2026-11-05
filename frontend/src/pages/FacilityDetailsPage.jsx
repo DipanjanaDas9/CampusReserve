@@ -5,7 +5,6 @@ import { StudentLayout } from "../layouts/StudentLayout";
 import { SLOT_HOURS, getAvailability, toISODate } from "../api/availability";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
 import { getFacility } from "../api/facilities";
-import { OPERATING_HOURS, findSampleRoom } from "../data/sampleRooms";
 import { facilityToRoom } from "../lib/rooms";
 import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
@@ -32,13 +31,11 @@ const ENFORCED_RULES = [
 
 export function FacilityDetailsPage() {
   const { id } = useParams();
-  // Sample ids (e.g. "eng-312") come from the AI Finder's sample mode; real facilities have numeric ids.
-  const sampleRoom = findSampleRoom(id);
+
   const [loaded, setLoaded] = useState({ id: null, room: null, error: "" });
   const [tab, setTab] = useState("overview");
 
   useEffect(() => {
-    if (sampleRoom) return;
     let cancelled = false;
     getFacility(id)
       .then((facility) => !cancelled && setLoaded({ id, room: facilityToRoom(facility), error: "" }))
@@ -46,10 +43,10 @@ export function FacilityDetailsPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, sampleRoom]);
+  }, [id]);
 
   const current = loaded.id === id ? loaded : { room: null, error: "" };
-  const room = sampleRoom ?? current.room;
+  const room = current.room;
 
   if (!room) {
     return (
@@ -91,6 +88,7 @@ export function FacilityDetailsPage() {
                   <MapPin className="h-4 w-4" aria-hidden="true" /> {room.location}
                 </p>
               </div>
+              {room.building_name && <p className="text-sm text-muted-foreground">{room.building_name} · Floor {room.floor_number} · Room {room.room_number}{room.room_type ? ` · ${room.room_type}` : ""}</p>}
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
@@ -172,14 +170,17 @@ function Tabs({ value, onChange }) {
 }
 
 function openingHours(room) {
-  if (room.isSample) return OPERATING_HOURS;
   if (room.opening_time && room.closing_time) return `${formatTime(room.opening_time)} – ${formatTime(room.closing_time)}`;
   return "Not set yet — this room cannot be booked until an administrator adds opening hours";
 }
 
 function Overview({ room }) {
   const items = [
-    { icon: Users, label: "Capacity", value: `${room.capacity} people` },
+    { icon: Building2, label: "Building", value: room.building_name ?? "Not assigned" },
+    { icon: Building2, label: "Floor", value: room.floor_number == null ? "Not assigned" : room.floor_number === 0 ? "Ground floor (0)" : room.floor_number },
+    { icon: Building2, label: "Room number", value: room.room_number ?? "Not assigned" },
+    { icon: Building2, label: "Room type", value: room.room_type ?? "Not assigned" },
+    { icon: Users, label: "Maximum capacity", value: `${room.capacity} people` },
     { icon: Monitor, label: "Equipment", value: room.equipment?.length ? room.equipment.join(", ") : "None listed" },
     { icon: Clock, label: "Operating Hours", value: openingHours(room) },
     { icon: MapPin, label: "Location", value: room.location },

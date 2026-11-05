@@ -45,6 +45,7 @@ async function request(path, options = {}) {
 /** Backend room -> the shape the pages use. */
 function fromBackend(room) {
   return {
+    ...room,
     id: room.id,
     name: room.name,
     capacity: room.capacity,

@@ -28,6 +28,7 @@ export function RoomCard({ room, startTime, endTime }) {
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
           <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" /> {room.location}
         </p>
+        {room.building_name && <p className="mt-2 text-xs text-muted-foreground">{room.building_name} · Floor {room.floor_number} · Room {room.room_number}{room.room_type ? ` · ${room.room_type}` : ""}</p>}
         <p className="mt-2 flex items-center gap-1.5 text-sm text-foreground">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /> Capacity: {room.capacity}
         </p>

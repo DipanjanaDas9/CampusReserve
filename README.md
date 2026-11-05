@@ -49,3 +49,97 @@ python -m pytest
 ```
 
 Each test uses its own temporary SQLite database, so your local `campusreserve.db` is never touched.
+
+## Campus room catalog and development data
+
+Facilities now expose optional `building_name`, integer `floor_number`,
+`room_number`, and `room_type` fields. Floor `0` is the ground floor; negative
+integers can represent basement floors. Capacity is **maximum occupants**, never
+live occupancy. Admins can set these fields in Manage Facilities; room results
+and details display them, and Gemini can extract explicit catalog requirements.
+AI search resolves building shorthand such as “the library” when it uniquely
+identifies a catalog building. Ambiguous mentions return building choices rather
+than guessing; an explicit catalog name takes priority. Room types match ignoring
+case and trailing plural `s`. The existing capacity, equipment, operating-hours, and booking rules still
+apply.
+
+The startup migration adds nullable columns and a unique index for known
+building/floor/room combinations, ignoring capitalization and surrounding spaces.
+Legacy facilities keep their IDs and all existing values; their unknown catalog
+fields remain null. Assign building, floor, and room together when cataloging a
+legacy room. Room type can be set independently. Older API payloads remain valid,
+and updates that omit catalog fields preserve stored catalog values.
+
+For **development/demo only**, run the explicit seed command from `backend`:
+
+```bash
+python scripts/seed_demo.py --demo
+```
+
+This uses the existing SQLite configuration and inserts **30 fictional university
+rooms, not verified UTA room information**:
+
+| Building | Rooms | Catalog |
+| --- | ---: | --- |
+| Central Library | 10 | Two study rooms on each of floors 1–5 (`LIB-101`–`LIB-502`) |
+| Engineering Building | 8 | Laboratories, study rooms, conference rooms |
+| Student Center | 6 | Meeting rooms and multipurpose rooms |
+| Science Building | 6 | Study rooms and collaboration rooms |
+
+Each room includes maximum capacity, equipment, operating hours, optional
+restrictions, and active status. Two rooms are inactive to demonstrate that state.
+Seeded facilities are identified as fictional demo data in restrictions.
+
+**Server startup never seeds data**, including when the old
+`CAMPUSRESERVE_SEED_DEMO` setting is present. Do not run the demo command against
+production. Repeated runs skip existing catalog addresses and preserve all
+existing IDs, fields, reservations, users, and notifications. Earlier demo records
+are preserved too; they are not renamed or removed, so a database that already
+contains rooms can have more than 30 total facilities. The command prints the
+number actually added. Explicitly rerunning it will reinsert deleted demo
+addresses but never reset edits to existing rooms.
+
+No table is dropped or rebuilt. Normal startup migrates the configured local
+SQLite database in place; take a SQLite backup before applying migrations to
+important data. Tests migrate and seed temporary databases only.
+
+### Facility API filters
+
+`GET /facilities` still returns all rooms as a JSON array when no filters are
+provided. Optional query parameters can be combined (AND):
+
+- `building_name`: exact building name, ignoring case and surrounding spaces.
+- `floor_number`: integer floor, including `0` (ground) or negative basement floors.
+- `min_capacity`, `max_capacity`: inclusive positive bounds on maximum occupants.
+- `equipment`: repeat the parameter to require every item; matching ignores case,
+  surrounding/repeated spaces, and trailing plural `s`, as in existing room search.
+- `is_active`: `true` or `false`; omit to include both for existing admin clients.
+
+Example: `/facilities?building_name=Central%20Library&floor_number=2&min_capacity=5&equipment=Monitor&equipment=Whiteboard`.
+Invalid filter values return 422; no matches returns `[]`. This catalog endpoint
+filters room attributes, not live occupancy or booking availability. Continue to
+use `GET /facilities/{id}/availability` for a time window; reservation creation
+still rechecks capacity, active status, operating hours, and booking conflicts.
+
+Equipment is stored as JSON text in SQLite and returned as a list of strings.
+Malformed legacy equipment values are logged and exposed as `[]` rather than
+crashing listings, details, or AI search; reads never rewrite the stored data.
+
+### AI catalog search
+
+Gemini extracts building, integer floor (third floor = 3; ground = 0), group
+size, equipment, room type, and date/time requirements. Relative dates use the
+campus date in America/Chicago. Capacity is maximum occupants, not live occupancy.
+
+For example, “Find a study room for 6 people on the third floor of the library
+tomorrow with a projector” leaves start and end times unspecified. The response
+lists missing details and returns no availability results until times are supplied
+in the prompt or Edit controls. Explicit date/time fields override AI extraction.
+Building and floor are shown in the interpreted requirements summary.
+
+Results are actual SQLite facilities, filtered by catalog requirements, active
+status, maximum capacity, and every requested equipment item. Each candidate must
+pass the same time-window and booking-conflict checks as manual availability.
+Manual Search Spaces remains independent of Gemini and works without an API key.
+AI tests mock the Gemini response; a live Gemini request requires configured
+credentials and quota.

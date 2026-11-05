@@ -16,6 +16,10 @@ import { cn } from "../../lib/utils";
 
 const EMPTY_FORM = {
   name: "",
+  building_name: "",
+  floor_number: "",
+  room_number: "",
+  room_type: "",
   capacity: "",
   location: "",
   equipment: [],
@@ -223,7 +227,7 @@ export function ManageFacilitiesPage() {
               <table className="w-full min-w-[850px] text-sm">
                 <thead className="text-left text-muted-foreground">
                   <tr>
-                    {["Name", "Location", "Capacity", "Hours", "Status", "Equipment"].map((heading) => (
+                    {["Name", "Building / floor / room", "Room type", "Location", "Capacity", "Hours", "Status", "Equipment"].map((heading) => (
                       <th key={heading} scope="col" className="px-4 py-3 font-medium">{heading}</th>
                     ))}
                     <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
@@ -232,7 +236,7 @@ export function ManageFacilitiesPage() {
                 <tbody>
                   {shown.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                         {facilities.length === 0
                           ? "No facilities yet. Add the first one."
                           : "No facilities match these filters."}
@@ -242,6 +246,8 @@ export function ManageFacilitiesPage() {
                   {shown.map((facility) => (
                     <tr key={facility.id} className="border-t">
                       <td className="px-4 py-3 font-medium text-foreground">{facility.name}</td>
+                      <td className="px-4 py-3 text-foreground">{facility.building_name ?? "—"}<span className="block text-xs text-muted-foreground">Floor {facility.floor_number ?? "—"} · Room {facility.room_number ?? "—"}</span></td>
+                      <td className="px-4 py-3 text-foreground">{facility.room_type ?? "—"}</td>
                       <td className="px-4 py-3 text-foreground">{facility.location || "—"}</td>
                       <td className="px-4 py-3 text-foreground">{facility.capacity}</td>
                       <td className="whitespace-nowrap px-4 py-3">
@@ -353,6 +359,10 @@ function FacilityDialog({ facility, onSave, onClose }) {
   const dialogRef = useRef(null);
   const [form, setForm] = useState(() => facility ? ({
     name: facility.name,
+    building_name: facility.building_name ?? "",
+    floor_number: facility.floor_number == null ? "" : String(facility.floor_number),
+    room_number: facility.room_number ?? "",
+    room_type: facility.room_type ?? "",
     capacity: String(facility.capacity),
     location: facility.location ?? "",
     equipment: Array.isArray(facility.equipment) ? facility.equipment : [],
@@ -396,6 +406,13 @@ function FacilityDialog({ facility, onSave, onClose }) {
     } else if (form.opening_time && form.closing_time <= form.opening_time) {
       nextErrors.closing_time = "Closing time must be after opening time.";
     }
+    const identity = [form.building_name.trim(), form.floor_number.trim(), form.room_number.trim()];
+    if (identity.some(Boolean) && !identity.every(Boolean)) {
+      nextErrors.building_name = "Set building, floor, and room number together.";
+    }
+    if (form.floor_number.trim() && !Number.isInteger(Number(form.floor_number))) {
+      nextErrors.floor_number = "Floor must be a whole number (0 is ground floor).";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       dialogRef.current?.querySelector(`#fac-${Object.keys(nextErrors)[0]}`)?.focus();
@@ -407,6 +424,10 @@ function FacilityDialog({ facility, onSave, onClose }) {
     try {
       await onSave({
         name: form.name.trim(),
+        building_name: form.building_name.trim() || null,
+        floor_number: form.floor_number.trim() ? Number(form.floor_number) : null,
+        room_number: form.room_number.trim() || null,
+        room_type: form.room_type.trim() || null,
         capacity,
         equipment: form.equipment,
         location: form.location.trim() || null,
@@ -434,8 +455,12 @@ function FacilityDialog({ facility, onSave, onClose }) {
         </h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <TextField id="fac-name" label="Name" value={form.name} onChange={set("name")} error={errors.name} maxLength={100} className="sm:col-span-2" />
+          <TextField id="fac-building_name" label="Building (optional)" value={form.building_name} onChange={set("building_name")} error={errors.building_name} maxLength={100} />
+          <TextField id="fac-floor_number" label="Floor (0 = ground)" type="number" step="1" value={form.floor_number} onChange={set("floor_number")} error={errors.floor_number} />
+          <TextField id="fac-room_number" label="Room number" value={form.room_number} onChange={set("room_number")} maxLength={30} />
+          <TextField id="fac-room_type" label="Room type" value={form.room_type} onChange={set("room_type")} placeholder="e.g. Study room" maxLength={60} />
           <TextField id="fac-location" label="Location" value={form.location} onChange={set("location")} placeholder="e.g. Library, 2nd floor" />
-          <TextField id="fac-capacity" label="Capacity" type="number" min="1" value={form.capacity} onChange={set("capacity")} error={errors.capacity} />
+          <TextField id="fac-capacity" label="Maximum occupants" type="number" min="1" value={form.capacity} onChange={set("capacity")} error={errors.capacity} />
           <TextField id="fac-opening_time" label="Opening time" type="time" value={form.opening_time} onChange={set("opening_time")} />
           <TextField id="fac-closing_time" label="Closing time" type="time" value={form.closing_time} onChange={set("closing_time")} error={errors.closing_time} />
           <p className="-mt-2 text-xs text-muted-foreground sm:col-span-2">

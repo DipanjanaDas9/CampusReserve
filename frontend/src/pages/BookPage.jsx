@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { StudentLayout } from "../layouts/StudentLayout";
-import { getFacilities } from "../api/availability";
+import { getFacility } from "../api/facilities";
 import { submitReservation } from "../api/reservations";
-import { campusISO } from "../lib/datetime";
+import { campusISO, formatDuration } from "../lib/datetime";
 
 export function BookPage() {
     const { id } = useParams();
@@ -17,19 +17,8 @@ export function BookPage() {
 
       async function loadRoom() {
         try {
-          const facilities = await getFacilities();
-
+          const selectedRoom = await getFacility(id);
           if (!active) return;
-
-          const selectedRoom = facilities.find(
-            (facility) => String(facility.id) === String(id)
-          );
-
-          if (!selectedRoom) {
-            setRoomError("Facility not found.");
-            return;
-          }
-
           setSpace(selectedRoom);
           setRoomError("");
         } catch (err) {
@@ -54,12 +43,13 @@ export function BookPage() {
     const [error, setError] = useState(null);
     const [done, setDone] = useState(false);
     const [busy, setBusy] = useState(false);
-    const duration = start && end ? Number(end.split(":")[0]) - Number(start.split(":")[0]) : 0;
+    const duration = start && end ? formatDuration(start, end) : "—";
     
     async function onSubmit(e) {
       e.preventDefault();
       setError(null);
 
+      if (!space?.is_active) return setError("This facility is inactive and cannot be booked.");
       if (!date || !start || !end) {
         return setError(
           "Pick a time slot on the availability calendar first."
@@ -80,7 +70,7 @@ export function BookPage() {
         );
       }
 
-      const facilityId = Number(id);
+      const facilityId = Number(space?.id);
 
       if (!Number.isInteger(facilityId) || facilityId < 1) {
         return setError(
@@ -100,9 +90,7 @@ export function BookPage() {
       notes: notes.trim() || null,
     };
 
-    const result = await submitReservation(request);
-
-    console.log("Reservation created:", result);
+    await submitReservation(request);
 
     setDone(true);
   } catch (err) {
@@ -122,6 +110,7 @@ export function BookPage() {
 
         <div className="rounded-xl border bg-card p-6 shadow-card">
           <h2 className="mb-3 font-semibold">Reservation Details</h2>
+          {space && !space.is_active && <p role="alert" className="mb-3 text-sm text-destructive">This facility is inactive and cannot be booked.</p>}
           <dl className="grid grid-cols-2 gap-y-2 text-sm sm:grid-cols-4">
             <dt className="text-muted-foreground">Facility</dt><dd className="sm:col-span-3">{space?.name ?? id}</dd>
             {roomError && (
@@ -129,9 +118,11 @@ export function BookPage() {
                 {roomError}
               </p>
             )}
+            <dt className="text-muted-foreground">Building</dt><dd className="sm:col-span-3">{space?.building_name ?? "Not assigned"}</dd>
+            <dt className="text-muted-foreground">Floor / room</dt><dd className="sm:col-span-3">{space?.floor_number ?? "—"} / {space?.room_number ?? "—"}</dd>
             <dt className="text-muted-foreground">Date</dt><dd className="sm:col-span-3">{date ?? "—"}</dd>
             <dt className="text-muted-foreground">Time</dt><dd className="sm:col-span-3">{start && end ? `${start} – ${end}` : "—"}</dd>
-            <dt className="text-muted-foreground">Duration</dt><dd className="sm:col-span-3">{duration > 0 ? `${duration} hour${duration > 1 ? "s" : ""}` : "—"}</dd>
+            <dt className="text-muted-foreground">Duration</dt><dd className="sm:col-span-3">{duration}</dd>
           </dl>
 
           {done ? (<div className="mt-6 rounded-md bg-success/15 p-4 text-sm text-success">
@@ -143,7 +134,7 @@ export function BookPage() {
               </div>
               <div>
                 <label htmlFor="attendees" className="mb-1 block text-sm font-medium">Number of attendees</label>
-                <input id="attendees" type="number" min={1} className={input} value={attendees} onChange={(e) => setAttendees(e.target.value)}/>
+                <input id="attendees" type="number" min={1} max={space?.capacity} className={input} value={attendees} onChange={(e) => setAttendees(e.target.value)}/>
               </div>
               <div>
                 <label htmlFor="notes" className="mb-1 block text-sm font-medium">Additional notes (optional)</label>
@@ -153,7 +144,7 @@ export function BookPage() {
               <p className="text-xs text-muted-foreground">Availability is confirmed by the server when you submit.</p>
               <div className="flex items-center justify-between gap-3">
                 <Link to="/availability" className="text-sm font-medium text-primary hover:underline">← Back to availability</Link>
-                <button type="submit" disabled={busy || !space || Boolean(roomError)} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-brand disabled:opacity-60">
+                <button type="submit" disabled={busy || !space?.is_active || Boolean(roomError)} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-brand disabled:opacity-60">
                   {busy ? "Submitting…" : "Submit Request"}
                 </button>
               </div>

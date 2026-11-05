@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import "./AiFinderPage.css";
-import { ArrowRight, CalendarDays, Check, Clock, Loader2, Monitor, Pencil, Search, Send, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Building2, CalendarDays, Check, Clock, Loader2, Monitor, Pencil, Search, Send, Sparkles, Users } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { aiSearchRooms } from "../api/rooms";
 import { RoomCard, SortSelect } from "../components/RoomCard";
@@ -174,6 +174,9 @@ const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 function Interpretation({ interpreted: r, times, editing, onEdit, overrides, setOverrides, onSearchAgain, loading }) {
   const notSpecified = <span className="text-muted-foreground">Not specified</span>;
   const tiles = [
+    { icon: Building2, label: "Building", value: r.building_name || notSpecified },
+    { icon: Building2, label: "Floor", value: r.floor_number == null ? notSpecified : r.floor_number === 0 ? "Ground floor (0)" : `Floor ${r.floor_number}` },
+    { icon: Building2, label: "Room type", value: r.room_type || notSpecified },
     { icon: Users, label: "Group Size", value: r.group_size ? `${r.group_size} ${r.group_size === 1 ? "person" : "people"}` : notSpecified },
     {
       icon: CalendarDays,

@@ -71,6 +71,17 @@ def normalize_equipment(value: str) -> str:
     return " ".join(value.strip().casefold().split()).rstrip("s")
 
 
+def resolve_building(requested, facilities):
+    """Resolve shorthand only if it identifies one actual catalog building."""
+    names = sorted({room["building_name"] for room in facilities if room["building_name"]})
+    normalized = " ".join(requested.strip().casefold().split())
+    exact = [name for name in names if name.strip().casefold() == normalized]
+    if exact:
+        return exact
+    words = set(normalized.split()) - {"the", "a", "an"}
+    return [name for name in names if words and words.issubset(set(name.casefold().split()))]
+
+
 @router.post("/ai-search")
 def ai_search_rooms(
     request: AIRoomSearchRequest,
@@ -162,6 +173,18 @@ def ai_search_rooms(
         )),
     })
 
+    facilities = get_facilities()
+    if extracted.building_name:
+        matches = resolve_building(extracted.building_name, facilities)
+        if len(matches) > 1:
+            interpreted["building_options"] = matches
+            interpreted["missing_information"].append("Choose a building: " + ", ".join(matches))
+            return {"interpreted_requirements": interpreted, "results": []}
+        if not matches:
+            interpreted["missing_information"].append("No catalog building matches: " + extracted.building_name)
+            return {"interpreted_requirements": interpreted, "results": []}
+        interpreted["building_name"] = matches[0]
+
     if missing:
         return {
             "interpreted_requirements": interpreted,
@@ -183,7 +206,7 @@ def ai_search_rooms(
             detail="End time must be after start time.",
         )
 
-    group_size = extracted.group_size or 1
+    group_size = extracted.group_size if extracted.group_size is not None else 1
     if group_size < 1:
         raise HTTPException(
             status_code=422,
@@ -198,11 +221,23 @@ def ai_search_rooms(
 
     results = []
 
-    for facility in get_facilities():
+    for facility in facilities:
         if not facility["is_active"]:
             continue
 
         if facility["capacity"] < group_size:
+            continue
+
+        if extracted.floor_number is not None and facility["floor_number"] != extracted.floor_number:
+            continue
+        if any(
+            requested and normalize_equipment(requested) != normalize_equipment(facility[field] or "")
+            for field, requested in (
+                ("building_name", interpreted["building_name"]),
+                ("room_number", extracted.room_number),
+                ("room_type", extracted.room_type),
+            )
+        ):
             continue
 
         available_equipment = {

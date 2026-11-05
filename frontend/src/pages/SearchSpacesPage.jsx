@@ -13,7 +13,7 @@ import "./SearchSpacesPage.css";
 const fieldClass =
   "h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
-const EMPTY_FILTERS = { groupSize: "1", equipment: [], location: "" };
+const EMPTY_FILTERS = { groupSize: "1", equipment: [], building: "", floor: "" };
 
 export function SearchSpacesPage() {
   const [rooms, setRooms] = useState(null);
@@ -25,7 +25,7 @@ export function SearchSpacesPage() {
 
   useEffect(() => {
     listFacilities()
-      .then((list) => setRooms(list.map(facilityToRoom)))
+      .then((list) => setRooms(list.filter(room => room.is_active).map(facilityToRoom)))
       .catch((err) => setLoadError(err.message));
   }, []);
 
@@ -43,24 +43,28 @@ export function SearchSpacesPage() {
     setFormError("");
   }
 
-  const hasFilters = applied.groupSize !== "1" || applied.equipment.length > 0 || applied.location.trim() !== "";
+  const hasFilters = applied.groupSize !== "1" || applied.equipment.length > 0 || applied.building !== "" || applied.floor !== "";
 
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
   const toggleEquipment = (item) =>
     setFilters((f) => ({ ...f, equipment: f.equipment.includes(item) ? f.equipment.filter((x) => x !== item) : [...f.equipment, item] }));
 
 
-  const locations = useMemo(
+  const buildings = useMemo(
     () =>
       [
         ...new Set(
           (rooms ?? [])
-            .map((room) => room.location)
+            .map((room) => room.building_name)
             .filter(Boolean)
         ),
       ].sort(),
     [rooms]
   );
+
+  const floors = useMemo(() => [...new Set((rooms ?? [])
+    .filter(room => !filters.building || room.building_name === filters.building)
+    .map(room => room.floor_number).filter(floor => floor != null))].sort((a, b) => a - b), [rooms, filters.building]);
 
   const shown = useMemo(
     () =>
@@ -69,7 +73,8 @@ export function SearchSpacesPage() {
             filterFacilities(rooms, {
               minCapacity: Number(applied.groupSize),
               equipment: applied.equipment,
-              location: applied.location,
+              buildingName: applied.building,
+              floorNumber: applied.floor === "" ? null : Number(applied.floor),
             }),
             sortBy
           )
@@ -121,12 +126,17 @@ export function SearchSpacesPage() {
             </fieldset>
             <div>
               <label htmlFor="s-location" className="mb-1.5 block text-sm font-medium text-foreground"><Building2 size={15} /> Building</label>
-              <input id="s-location" list="s-locations" value={filters.location} onChange={set("location")} placeholder="Any building" className={fieldClass} />
-              <datalist id="s-locations">
-                {locations.map((l) => (
-                  <option key={l} value={l} />
-                ))}
-              </datalist>
+              <select id="s-location" value={filters.building} onChange={e => setFilters(f => ({ ...f, building: e.target.value, floor: "" }))} className={fieldClass}>
+                <option value="">Any building</option>
+                {buildings.map(building => <option key={building} value={building}>{building}</option>)}
+              </select>
+            </div>
+            <div className="spaces-floor-filter">
+              <label htmlFor="s-floor" className="mb-1.5 block text-sm font-medium text-foreground">Floor</label>
+              <select id="s-floor" value={filters.floor} onChange={set("floor")} className={fieldClass}>
+                <option value="">Any floor</option>
+                {floors.map(floor => <option key={floor} value={floor}>{floor === 0 ? "Ground floor (0)" : `Floor ${floor}`}</option>)}
+              </select>
             </div>
             <button
               type="submit"
@@ -158,7 +168,7 @@ export function SearchSpacesPage() {
               </div>
               <SortSelect id="search-sort" value={sortBy} onChange={setSortBy} />
             </div>
-            {hasFilters && <div className="spaces-applied"><span>Filtered by</span>{applied.groupSize !== "1" && <b>{applied.groupSize}+ people</b>}{applied.location && <b>{applied.location}</b>}{applied.equipment.map(item => <b key={item}>{item}</b>)}<button type="button" onClick={resetFilters}>Clear all <X size={13} /></button></div>}
+            {hasFilters && <div className="spaces-applied"><span>Filtered by</span>{applied.groupSize !== "1" && <b>{applied.groupSize}+ people</b>}{applied.building && <b>{applied.building}</b>}{applied.floor !== "" && <b>Floor {applied.floor}</b>}{applied.equipment.map(item => <b key={item}>{item}</b>)}<button type="button" onClick={resetFilters}>Clear all <X size={13} /></button></div>}
             {shown.length === 0 ? (
               <div className="spaces-empty">
                 <span><Search size={28} /></span>
