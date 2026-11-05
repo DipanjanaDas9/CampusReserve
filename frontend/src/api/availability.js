@@ -1,9 +1,9 @@
 import { authenticatedFetch } from "./authenticatedFetch";
 import { API_BASE_URL } from "./auth";
 
-// One-hour slots: 8 AM through 6 PM.
+// One-hour slots from 8 AM to 10 PM; the last slot starts at 9 PM.
 export const SLOT_HOURS = Array.from(
-  { length: 11 },
+  { length: 14 },
   (_, i) => 8 + i
 );
 

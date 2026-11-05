@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   Bell,
+  CheckCheck,
   CalendarCheck,
   CalendarX,
   Clock,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { StudentLayout } from "../layouts/StudentLayout";
+import { StudentPageHeader } from "../components/StudentPageHeader";
 import { cn } from "../lib/utils";
 import {
   getNotifications,
@@ -125,37 +127,22 @@ export function NotificationsPage() {
 
   return (
     <StudentLayout active="notifications">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Notifications</h1>
-            <p className="text-sm text-muted-foreground">
-              {unread} unread notification{unread === 1 ? "" : "s"}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleReadAll}
-            disabled={unread === 0 || busy}
-            className="text-sm font-medium text-primary disabled:opacity-40"
-          >
-            {busy ? "Updating..." : "Mark all as read"}
-          </button>
-        </div>
-
+      <div className="student-page notifications-page mx-auto max-w-5xl">
+        <StudentPageHeader eyebrow="STAY IN THE LOOP" title="Your campus updates" description="Booking decisions, reservation updates, and everything you need to know." />
+        <div className="notification-summary"><span className="notification-summary-icon"><Bell size={22} /></span><div><strong>{loading ? "Checking your updates…" : unread ? `${unread} unread notification${unread === 1 ? "" : "s"}` : "You’re all caught up"}</strong><p>All your reservation updates, in one place.</p></div><button type="button" onClick={handleReadAll} disabled={unread === 0 || busy}><CheckCheck size={16} />{busy ? "Updating…" : "Mark all as read"}</button></div>
         {error && (
           <p role="alert" className="mb-4 text-sm text-destructive">
             {error}
           </p>
         )}
 
-        <div className="mb-4 inline-flex rounded-lg bg-secondary p-1">
+        <div className="student-tabs" aria-label="Notification filters">
           {["all", "unread"].map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
               className={cn(
                 "rounded-md px-4 py-1.5 text-sm font-medium capitalize",
                 filter === f
@@ -163,21 +150,18 @@ export function NotificationsPage() {
                   : "text-muted-foreground"
               )}
             >
-              {f}
+              {f} <span className="student-tab-count">{loading ? "—" : f === "all" ? notes.length : unread}</span>
             </button>
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-xl border bg-card shadow-card">
+        <div className="notification-list" aria-live="polite">
           {loading ? (
-            <div className="py-16 text-center text-muted-foreground">
+            <div className="student-empty" role="status">
               Loading notifications...
             </div>
           ) : shown.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
-              <Bell className="h-8 w-8" />
-              You're all caught up.
-            </div>
+            <div className="student-empty"><span className="student-empty-icon"><CheckCheck size={28} /></span><h2>{filter === "unread" ? "A clear inbox. A clear mind." : "Your updates will land here"}</h2><p>{filter === "unread" ? "You’ve read all your notifications. We’ll keep you posted." : "We’ll let you know when there’s news about your reservations."}</p></div>
           ) : (
             shown.map((n) => {
               const Icon = ICONS[n.kind] || Info;
@@ -187,9 +171,10 @@ export function NotificationsPage() {
                   key={n.id}
                   type="button"
                   onClick={() => handleRead(n.id)}
+                  aria-label={`${n.read ? "Read" : "Mark as read"}: ${n.title}`}
                   className={cn(
-                    "flex w-full items-start gap-4 border-b px-5 py-4 text-left last:border-b-0",
-                    !n.read && "bg-accent/50"
+                    "notification-item",
+                    !n.read && "is-unread"
                   )}
                 >
                   <div
@@ -201,8 +186,8 @@ export function NotificationsPage() {
                     <Icon className="h-5 w-5" />
                   </div>
 
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="notification-copy">
+                    <div className="notification-item-heading">
                       <span className="font-semibold">{n.title}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatNotificationTime(n.created_at)}
@@ -214,7 +199,7 @@ export function NotificationsPage() {
                   </div>
 
                   {!n.read && (
-                    <span className="mt-2 h-2.5 w-2.5 rounded-full bg-primary" />
+                    <span className="notification-unread-dot" aria-label="Unread" />
                   )}
                 </button>
               );

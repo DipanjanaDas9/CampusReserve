@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { AuthLayout } from "../../layouts/AuthLayout";
 import { AuthNotConnectedError, login, ROLE_REDIRECTS } from "../../api/auth";
 const schema = z.object({
@@ -62,11 +62,13 @@ export function LoginPage() {
             setLoading(false);
         }
     }
-    const inputBase = "w-full rounded-lg border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary";
-    return (<AuthLayout>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
-        <h1 className="font-display text-2xl font-bold text-foreground">Welcome Back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in to your account to continue.</p>
+    const inputBase = "login-input w-full rounded-lg border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary";
+    return (<AuthLayout variant="login" showTagline={false}>
+      <div className="login-card rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
+        <div className="login-heading">
+          <h1 className="font-display text-2xl font-bold text-foreground">Welcome Back!</h1>
+        </div>
+        <p className="login-description mt-1 text-sm text-muted-foreground">Sign in to reserve, manage, and discover campus spaces.</p>
         {sessionExpired && (
           <div
             role="status"
@@ -85,8 +87,8 @@ export function LoginPage() {
           </div>
         )}
 
-        <div role="tablist" aria-label="Account type" className="mt-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
-          {["student", "admin"].map((r) => (<button key={r} type="button" role="tab" aria-selected={role === r} onClick={() => { setRole(r); setNotice(null); }} className={`rounded-md py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${role === r ? "bg-primary text-primary-foreground shadow-brand" : "text-muted-foreground hover:text-foreground"}`}>
+        <div role="tablist" aria-label="Account type" className="login-role-tabs mt-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
+          {["student", "admin"].map((r) => (<button key={r} type="button" role="tab" aria-selected={role === r} onClick={() => { setRole(r); setNotice(null); }} className={`login-role-tab rounded-md py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${role === r ? "is-selected bg-primary text-primary-foreground shadow-brand" : "text-muted-foreground hover:text-foreground"}`}>
               {r === "student" ? "Student" : "Admin"}
             </button>))}
         </div>
@@ -98,24 +100,26 @@ export function LoginPage() {
             <span>{notice.text}</span>
           </div>)}
 
-        <form onSubmit={onSubmit} noValidate className="mt-6 space-y-5">
+        <form onSubmit={onSubmit} noValidate className="login-form mt-6 flex flex-col">
           <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
+            <label htmlFor="email" className="login-field-label mb-1.5 block text-sm font-medium text-foreground">
+              <Mail aria-hidden="true" />
               Email Address
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true"/>
+              <Mail className="login-input-icon pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true"/>
               <input id="email" type="email" autoComplete="email" placeholder={role === "admin" ? "admin@university.edu" : "yourname@university.edu"} value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={`${inputBase} ${errors.email ? "border-destructive" : "border-input"}`}/>
             </div>
             <FieldError id="email-error" msg={errors.email}/>
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
+            <label htmlFor="password" className="login-field-label mb-1.5 block text-sm font-medium text-foreground">
+              <Lock aria-hidden="true" />
               Password
             </label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true"/>
+              <Lock className="login-input-icon pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true"/>
               <input id="password" type={show ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!errors.password} aria-describedby={errors.password ? "password-error" : undefined} className={`${inputBase} pr-10 ${errors.password ? "border-destructive" : "border-input"}`}/>
               <button type="button" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 {show ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
@@ -124,8 +128,7 @@ export function LoginPage() {
             <FieldError id="password-error" msg={errors.password}/>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Sessions expire after 1 hour or when the tab closes.</span>
+          <div className="login-forgot-row flex items-center justify-end">
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-primary hover:underline"
@@ -134,18 +137,19 @@ export function LoginPage() {
               </Link>
           </div>
 
-          <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70">
+          <button type="submit" disabled={loading} className="login-submit flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70">
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true"/>}
             {loading ? "Signing in..." : role === "admin" ? "Sign In as Admin" : "Sign In"}
+            {!loading && <ArrowRight aria-hidden="true" />}
           </button>
         </form>
 
-        {role === "student" ? (<p className="mt-6 text-center text-sm text-muted-foreground">
+        {role === "student" ? (<p className="login-register mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
           <Link to="/register" className="font-semibold text-primary hover:underline">
             Register
           </Link>
-        </p>) : (<p className="mt-6 text-center text-sm text-muted-foreground">
+        </p>) : (<p className="login-register mt-6 text-center text-sm text-muted-foreground">
             Admin accounts are created by your campus administrator.
           </p>)}
       </div>

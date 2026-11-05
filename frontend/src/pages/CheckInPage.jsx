@@ -1,5 +1,7 @@
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { StudentPageHeader } from "../components/StudentPageHeader";
 import {
   Building2,
   CalendarDays,
@@ -43,6 +45,14 @@ export function CheckInPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const refresh = () => setNow(Date.now());
+    const timer = setInterval(refresh, 1000);
+    window.addEventListener("focus", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -87,14 +97,13 @@ export function CheckInPage() {
     (r) =>
       r.status === "approved" &&
       !r.checked_in_at &&
-      new Date(r.end_time) > new Date()
+      new Date(r.end_time).getTime() > now
   );
 
   const selected = reservations.find(
     (r) => String(r.id) === selectedId
   );
 
-  const now = Date.now();
 
   const withinCheckInWindow =
     selected &&
@@ -167,16 +176,11 @@ export function CheckInPage() {
 
   return (
     <StudentLayout active="reservations">
-      <div className="mx-auto max-w-lg">
-        <h1 className="text-2xl font-bold text-foreground">
-          Check In to Your Reservation
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Confirm your arrival and start using the space
-        </p>
-
+      <div className="student-page checkin-page mx-auto max-w-5xl">
+        <StudentPageHeader eyebrow="YOU’RE RIGHT WHERE YOU NEED TO BE" title="Arrive. Check in. Settle in." description="Your space is waiting. Confirm your arrival and make it yours." />
+        <div className="checkin-layout"><div>
         {loading ? (
-          <p className="mt-6 text-sm text-muted-foreground">
+          <p className="student-empty" role="status">
             Loading your reservations...
           </p>
         ) : (
@@ -215,7 +219,7 @@ export function CheckInPage() {
             )}
 
             {selected && (
-              <div className="mt-6 rounded-xl border bg-card p-5 shadow-card">
+              <div className="checkin-ticket">
                 <div className="flex items-center gap-4">
                   <div className="flex h-14 w-20 items-center justify-center rounded-md bg-secondary">
                     <Building2 className="h-6 w-6 text-primary" />
@@ -276,15 +280,13 @@ export function CheckInPage() {
             )}
 
             {!selected && !message && !error && (
-              <div className="mt-6 rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-                No approved reservations available for check-in.
-              </div>
+              <div className="student-empty"><span className="student-empty-icon"><CalendarDays size={28} /></span><h2>{approvedReservations.length ? "Choose your space above" : "No check-ins just yet"}</h2><p>{approvedReservations.length ? "Select a reservation to see its details and check-in window." : "Your approved upcoming reservations will appear here when they’re ready."}</p><Link to="/reservations">View my reservations</Link></div>
             )}
 
             {message && (
               <p
                 role="status"
-                className="mt-4 text-center text-sm text-success"
+                className="checkin-success"
               >
                 {message}
               </p>
@@ -300,6 +302,7 @@ export function CheckInPage() {
             )}
           </>
         )}
+        </div></div>
       </div>
     </StudentLayout>
   );

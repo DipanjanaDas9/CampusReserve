@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { CalendarDays, Clock, Lightbulb, Loader2, Monitor, Pencil, Send, Sparkles, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import "./AiFinderPage.css";
+import { ArrowRight, CalendarDays, Check, Clock, Loader2, Monitor, Pencil, Search, Send, Sparkles, Users } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { aiSearchRooms } from "../api/rooms";
 import { RoomCard, SortSelect } from "../components/RoomCard";
@@ -19,6 +21,7 @@ const fieldClass =
   "w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
 export function AiFinderPage() {
+  const queryRef = useRef(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -62,25 +65,21 @@ export function AiFinderPage() {
 
   return (
     <StudentLayout active="ai">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Sparkles className="h-8 w-8" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl">AI Smart Space Finder</h1>
-            <p className="mt-1 text-muted-foreground">Describe your needs and let AI find the best campus spaces for you.</p>
-          </div>
+      <div className="ai-page mx-auto max-w-6xl">
+        <header className="ai-hero">
+          <p className="ai-eyebrow"><Sparkles size={14} /> YOUR CAMPUS, A LITTLE SMARTER</p>
+          <h1>The right space.<br /><span>Just a few words away.</span></h1>
+          <p>Tell us what you’re planning. We’ll turn your idea into a search<br className="ai-desktop-break" /> for campus spaces that fit your group, schedule, and equipment.</p>
         </header>
-
-        <form onSubmit={onSubmit} className="rounded-xl border bg-card p-4 shadow-card md:p-6">
-          <label htmlFor="ai-query" className="mb-2 block font-semibold text-foreground">
-            Tell us what you need
-          </label>
-          <div className="flex flex-col gap-3 md:flex-row">
+        <div className="ai-workspace">
+        <div className="ai-composer-column">
+        <form onSubmit={onSubmit} className="ai-composer">
+          <div className="ai-composer-heading"><span><Sparkles size={19} /></span><div><label htmlFor="ai-query">What space do you have in mind?</label><p>A study session, a team meeting, your next big idea.</p></div></div>
+          <div className="ai-input-area">
             <textarea
+              ref={queryRef}
               id="ai-query"
-              rows={2}
+              rows={4}
               maxLength={500}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -96,29 +95,35 @@ export function AiFinderPage() {
               {loading ? "Finding…" : "Find Spaces"}
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-sm font-medium text-foreground">
-              <Lightbulb className="h-4 w-4 text-chart-4" aria-hidden="true" /> Example prompts:
-            </span>
-            {EXAMPLE_PROMPTS.map((prompt) => (
+          <div className="ai-composer-meta"><span>Include your date, time, group size, and any equipment.</span><span>{query.length}/500</span></div>
+          <div className="ai-examples">
+            <span className="ai-examples-label">NEED A LITTLE INSPIRATION?</span>
+            {EXAMPLE_PROMPTS.map((prompt, index) => (
               <button
                 key={prompt}
                 type="button"
-                onClick={() => setQuery(prompt)}
-                className="rounded-full border bg-secondary px-3 py-1 text-xs text-secondary-foreground hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => { setQuery(prompt); queryRef.current?.focus(); }}
+                disabled={loading}
+                className="ai-example"
               >
-                {prompt}
+                <span>{["Group study", "Presentation", "Solo focus", "Team meeting"][index]}</span><p>{prompt}</p><ArrowRight size={15} aria-hidden="true" />
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Your request text is sent to Google Gemini to extract the details. CampusReserve, not the AI, checks which rooms are free.
-          </p>
         </form>
-
+        </div>
+        <aside className="ai-guide" aria-label="How AI search works">
+          <span className="ai-guide-icon"><Monitor size={23} /></span>
+          <h2>Less searching.<br />More possibilities.</h2>
+          <p>A good space starts with a few simple details.</p>
+          <ol><li><span>01</span><div><strong>Describe your plans</strong><p>How many people? What equipment?</p></div></li><li><span>02</span><div><strong>Make time for it</strong><p>Add a date, start time, and end time.</p></div></li><li><span>03</span><div><strong>Find your fit</strong><p>Review the details, then request a room.</p></div></li></ol>
+          <Link to="/search">Prefer to browse? <span>Search Spaces <ArrowRight size={14} /></span></Link>
+        </aside>
+        </div>
+        {loading && <div className="ai-progress" role="status"><Loader2 size={20} className="animate-spin" /><div><strong>Finding space for your plans…</strong><p>Interpreting your request and checking campus availability.</p></div></div>}
         <StatusMessage kind="error" className="mt-4">{error}</StatusMessage>
 
-        {result && (
+        {result && !loading && (
           <>
             {result.interpreted ? (
               <Interpretation
@@ -141,16 +146,16 @@ export function AiFinderPage() {
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 id="recommended-heading" className="text-lg font-bold text-foreground">
-                    Recommended Spaces
+                    Spaces for your plans <span className="ai-count">{result.rooms.length}</span>
                   </h2>
                   {(result.isSample || result.rooms.some((room) => room.isSample)) && <SampleDataLabel />}
                 </div>
                 <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} />
               </div>
               {result.rooms.length === 0 ? (
-                <p className="rounded-xl border bg-card py-12 text-center text-muted-foreground shadow-card">No rooms match. Try fewer requirements.</p>
+                <div className="ai-empty"><Search size={28} /><h3>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "A few more details will help" : "Let’s try a different fit"}</h3><p>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "Add a date, start time, and end time using Edit above, then search again." : "No rooms match this request. Try a different time, a smaller group, or fewer equipment requirements."}</p><button type="button" onClick={() => { queryRef.current?.focus(); queryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Refine your request <ArrowRight size={15} /></button></div>
               ) : (
-                <div className="space-y-3">
+                <div className="ai-results">
                   {sortRooms(result.rooms, sortBy).map((room) => (
                     <RoomCard key={room.id} room={room} startTime={result.times.startTime} endTime={result.times.endTime} />
                   ))}
@@ -187,10 +192,10 @@ function Interpretation({ interpreted: r, times, editing, onEdit, overrides, set
   const set = (key) => (e) => setOverrides((o) => ({ ...o, [key]: e.target.value }));
 
   return (
-    <section className="mt-6 rounded-xl border bg-card p-4 shadow-card md:p-5" aria-labelledby="understood-heading">
+    <section className="ai-interpretation" aria-labelledby="understood-heading">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 id="understood-heading" className="font-bold text-foreground">
-          AI understood your requirements
+          <span className="ai-understood"><Check size={16} /> Here’s what we understood</span>
         </h2>
         <button
           type="button"
