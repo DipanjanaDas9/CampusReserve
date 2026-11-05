@@ -31,8 +31,9 @@ def get_my_reservations(
                 r.attendees,
                 r.purpose,
                 r.notes,
+                r.rejection_reason,
                 r.created_at
-                
+
             FROM reservations r
             JOIN facilities f ON r.facility_id = f.id
             WHERE r.user_id = ?

@@ -155,6 +155,15 @@ def initialize_database():
                 """
             )
 
+        # Add the administrator's reason for rejecting a request
+        if "rejection_reason" not in reservation_column_names:
+            connection.execute(
+                """
+                ALTER TABLE reservations
+                ADD COLUMN rejection_reason TEXT
+                """
+            )
+
 
         # Add active/inactive tracking to existing facilities
         facility_columns = connection.execute(

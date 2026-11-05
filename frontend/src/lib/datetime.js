@@ -1,6 +1,23 @@
-import { toISODate } from "../api/availability";
+import { startOfWeek } from "../api/availability";
 
-export const todayISO = () => toISODate(new Date());
+/** Current campus date and hour, whatever time zone the browser is in. */
+export function campusNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAMPUS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const value = (type) => parts.find((p) => p.type === type).value;
+  return { date: `${value("year")}-${value("month")}-${value("day")}`, hour: Number(value("hour")) };
+}
+
+export const todayISO = () => campusNow().date;
+
+/** First day of the campus's current week, as a local Date for the calendar grids. */
+export const campusWeekStart = () => startOfWeek(new Date(`${todayISO()}T00:00`));
 
 /** "14:00" -> "2:00 PM" */
 export function formatTime(hhmm) {

@@ -3,43 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { getFacilities } from "../api/availability";
 import { submitReservation } from "../api/reservations";
-
-
-function toCampusTimestamp(date, time) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-
-  // Interpret the selected wall-clock time in the campus timezone.
-  const localTime = new Date(year, month - 1, day, hour, minute);
-
-  if (Number.isNaN(localTime.getTime())) {
-    throw new Error("Invalid reservation date or time.");
-  }
-
-  if (
-    localTime.getFullYear() !== year ||
-    localTime.getMonth() !== month - 1 ||
-    localTime.getDate() !== day ||
-    localTime.getHours() !== hour ||
-    localTime.getMinutes() !== minute
-  ) {
-    throw new Error("Invalid or nonexistent reservation time.");
-  }
-
-  const offsetMinutes = -localTime.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const offsetHours = String(
-    Math.floor(Math.abs(offsetMinutes) / 60)
-  ).padStart(2, "0");
-  const offsetMins = String(
-    Math.abs(offsetMinutes) % 60
-  ).padStart(2, "0");
-
-  return (
-    `${date}T${time}:00` +
-    `${sign}${offsetHours}:${offsetMins}`
-  );
-}
+import { campusISO } from "../lib/datetime";
 
 export function BookPage() {
     const { id } = useParams();
@@ -129,8 +93,8 @@ export function BookPage() {
   try {
     const request = {
       facility_id: facilityId,
-      start_time: toCampusTimestamp(date, start),
-      end_time: toCampusTimestamp(date, end),
+      start_time: campusISO(date, start),
+      end_time: campusISO(date, end),
       attendees: n,
       purpose: purpose.trim(),
       notes: notes.trim() || null,

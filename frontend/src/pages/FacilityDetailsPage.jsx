@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, Loader2, MapPin, Monitor, Users } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
-import { SLOT_HOURS, getAvailability, startOfWeek, toISODate } from "../api/availability";
+import { SLOT_HOURS, getAvailability, toISODate } from "../api/availability";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
 import { getFacility } from "../api/facilities";
 import { OPERATING_HOURS, findSampleRoom } from "../data/sampleRooms";
 import { facilityToRoom } from "../lib/rooms";
 import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
-import { formatTime } from "../lib/datetime";
+import { campusNow, campusWeekStart, formatTime } from "../lib/datetime";
 import { cn } from "../lib/utils";
 
 const TABS = [
@@ -253,7 +253,7 @@ function Rules({ room }) {
 /** Compact week view built on the same availability data and slot selection as the Availability page. */
 function AvailabilityTab({ roomId }) {
   const navigate = useNavigate();
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [weekStart, setWeekStart] = useState(campusWeekStart);
   const [data, setData] = useState({ key: null, slots: [], isSample: false, error: "" });
   const [selection, setSelection] = useState(null);
   const key = `${roomId}|${toISODate(weekStart)}`;
@@ -271,9 +271,8 @@ function AvailabilityTab({ roomId }) {
   const loaded = data.key === key;
   const lookup = useMemo(() => new Map(data.slots.map((s) => [`${s.date}-${s.hour}`, s.status])), [data.slots]);
   const status = (date, hour) => (loaded ? lookup.get(`${date}-${hour}`) : undefined);
-  const now = new Date();
-  const today = toISODate(now);
-  const isPast = (iso, hour) => iso < today || (iso === today && hour <= now.getHours());
+  const { date: today, hour: currentHour } = campusNow();
+  const isPast = (iso, hour) => iso < today || (iso === today && hour <= currentHour);
   const check = checkSelection(selection, (date, h) => (isPast(date, h) ? "booked" : status(date, h)));
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);

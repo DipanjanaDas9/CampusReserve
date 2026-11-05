@@ -1,10 +1,13 @@
+from contextlib import closing
+
 import pytest
 
+from app.db import connection as db_connection
 from conftest import slot
 
 
 def book(client, headers, facility_id, start="10:00", end="12:00", **kwargs):
-    return client.post("/reservations", headers=headers, json={"facility_id": facility_id, **slot(start, end, **kwargs)})
+    return client.post("/reservations", headers=headers, json={"facility_id": facility_id, "purpose": "Group study", **slot(start, end, **kwargs)})
 
 
 def test_booking_creates_a_pending_reservation(client, student, facility_id):
@@ -68,11 +71,19 @@ def test_invalid_times_are_rejected(client, student, facility_id, times, status)
     assert book(client, student, facility_id, **times).status_code == status
 
 
-def test_facility_without_opening_hours_cannot_be_booked(client, student, admin):
-    created = client.post("/facilities", headers=admin, json={"name": "Quiet Pod", "capacity": 2})
-    pod_id = created.json()["facility"]["id"]
+def test_facility_without_opening_hours_cannot_be_booked(client, student, facility_id):
+    # The API now requires hours, but rows created before that rule can still lack them.
+    with closing(db_connection.get_connection()) as connection:
+        connection.execute("UPDATE facilities SET opening_time = NULL, closing_time = NULL WHERE id = ?", (facility_id,))
+        connection.commit()
 
-    assert book(client, student, pod_id).status_code == 409
+    assert book(client, student, facility_id).status_code == 409
+
+
+def test_booking_requires_a_purpose(client, student, facility_id):
+    response = client.post("/reservations", headers=student, json={"facility_id": facility_id, **slot("10:00", "11:00")})
+
+    assert response.status_code == 422
 
 
 def test_unknown_facility_returns_404(client, student):
