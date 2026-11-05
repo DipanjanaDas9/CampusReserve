@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Search } from "lucide-react";
+import { ArrowRight, Building2, Check, Clock3, Search, SlidersHorizontal, Sparkles, Users, X } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { listFacilities } from "../api/facilities";
 import { EQUIPMENT_OPTIONS } from "../data/sampleRooms";
@@ -7,6 +7,8 @@ import { RoomCard, SortSelect } from "../components/RoomCard";
 import { StatusMessage } from "../components/StatusMessage";
 import { facilityToRoom, filterFacilities, sortRooms } from "../lib/rooms";
 import { cn } from "../lib/utils";
+import { Link } from "react-router-dom";
+import "./SearchSpacesPage.css";
 
 const fieldClass =
   "h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
@@ -34,6 +36,14 @@ export function SearchSpacesPage() {
     setFormError("");
     setApplied(filters);
   }
+
+  function resetFilters() {
+    setFilters(EMPTY_FILTERS);
+    setApplied(EMPTY_FILTERS);
+    setFormError("");
+  }
+
+  const hasFilters = applied.groupSize !== "1" || applied.equipment.length > 0 || applied.location.trim() !== "";
 
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
   const toggleEquipment = (item) =>
@@ -70,17 +80,25 @@ export function SearchSpacesPage() {
 
   return (
     <StudentLayout active="search">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="text-2xl font-bold text-foreground">Find a Space</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Filter campus spaces by group size, equipment and building</p>
+      <div className="spaces-page mx-auto max-w-6xl">
+        <header className="spaces-hero">
+          <div>
+            <p className="spaces-eyebrow"><span /> A SPACE FOR EVERY IDEA</p>
+            <h1>Find your next<br /><span>great place to focus.</span></h1>
+            <p className="spaces-intro">Study together, bring your team, or make room for something new. Find a campus space that fits.</p>
+            <div className="spaces-steps"><span><Search size={15} /> Find your space</span><i /><span><Clock3 size={15} /> Choose a time</span><i /><span><Check size={15} /> Request a booking</span></div>
+          </div>
+          <Link to="/ai-finder" className="spaces-ai-link"><span className="spaces-ai-icon"><Sparkles size={22} /></span><strong>Have a space in mind?</strong><span>Describe what you need.<br />Let AI help you find it.</span><b>Try AI Assistant <ArrowRight size={16} /></b></Link>
+        </header>
 
-        <form onSubmit={onSubmit} className="mt-6 rounded-xl border bg-card p-4 shadow-card md:p-6" aria-label="Search filters">
-          <div className="grid gap-4 lg:grid-cols-[10rem_1fr_16rem_auto] lg:items-end">
+        <form onSubmit={onSubmit} className="spaces-filters" aria-label="Search filters">
+          <div className="spaces-filter-heading"><h2><SlidersHorizontal size={17} /> Make it your space</h2><button type="button" onClick={resetFilters}>Reset filters</button></div>
+          <div className="spaces-filter-grid">
             <div>
-              <label htmlFor="s-size" className="mb-1.5 block text-sm font-medium text-foreground">Group Size</label>
+              <label htmlFor="s-size" className="mb-1.5 block text-sm font-medium text-foreground"><Users size={15} /> Group size</label>
               <input id="s-size" type="number" min="1" value={filters.groupSize} onChange={set("groupSize")} className={fieldClass} required />
             </div>
-            <fieldset>
+            <fieldset className="spaces-equipment">
               <legend className="mb-1.5 text-sm font-medium text-foreground">Equipment</legend>
               <div className="flex flex-wrap gap-2">
                 {EQUIPMENT_OPTIONS.map((item) => {
@@ -102,7 +120,7 @@ export function SearchSpacesPage() {
               </div>
             </fieldset>
             <div>
-              <label htmlFor="s-location" className="mb-1.5 block text-sm font-medium text-foreground">Building</label>
+              <label htmlFor="s-location" className="mb-1.5 block text-sm font-medium text-foreground"><Building2 size={15} /> Building</label>
               <input id="s-location" list="s-locations" value={filters.location} onChange={set("location")} placeholder="Any building" className={fieldClass} />
               <datalist id="s-locations">
                 {locations.map((l) => (
@@ -112,9 +130,9 @@ export function SearchSpacesPage() {
             </div>
             <button
               type="submit"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-brand hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="spaces-search-button inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-brand hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Search className="h-4 w-4" aria-hidden="true" /> Search
+              <Search className="h-4 w-4" aria-hidden="true" /> Find spaces
             </button>
           </div>
         </form>
@@ -123,34 +141,39 @@ export function SearchSpacesPage() {
         <StatusMessage kind="error" className="mt-4">{loadError}</StatusMessage>
 
         {!rooms && !loadError && (
-          <p className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading spaces…
-          </p>
+          <div className="spaces-loading" role="status" aria-label="Loading spaces">
+            {[1, 2, 3].map((n) => <div key={n} className="spaces-skeleton"><div /><span /><span /></div>)}
+            <span className="sr-only">Loading spaces…</span>
+          </div>
         )}
 
         {rooms && (
           <section className="mt-6" aria-live="polite" aria-labelledby="results-heading">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="spaces-results-heading">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 id="results-heading" className="font-semibold text-foreground">
+                <h2 id="results-heading" className="text-xl font-bold text-foreground">
                   {shown.length} space{shown.length === 1 ? "" : "s"} found
                 </h2>
-                <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">Availability not checked yet</span>
+                <span className="spaces-result-hint">Explore your options, then choose a time.</span>
               </div>
               <SortSelect id="search-sort" value={sortBy} onChange={setSortBy} />
             </div>
+            {hasFilters && <div className="spaces-applied"><span>Filtered by</span>{applied.groupSize !== "1" && <b>{applied.groupSize}+ people</b>}{applied.location && <b>{applied.location}</b>}{applied.equipment.map(item => <b key={item}>{item}</b>)}<button type="button" onClick={resetFilters}>Clear all <X size={13} /></button></div>}
             {shown.length === 0 ? (
-              <p className="rounded-xl border bg-card py-12 text-center text-muted-foreground shadow-card">
-                {rooms.length === 0 ? "No facilities have been added yet." : "No rooms match. Try fewer requirements."}
-              </p>
+              <div className="spaces-empty">
+                <span><Search size={28} /></span>
+                <h3>{rooms.length === 0 ? "Your campus spaces are on their way" : "Let’s make a little more room"}</h3>
+                <p>{rooms.length === 0 ? "Facilities will appear here once your campus administrator adds them." : "No spaces match these filters. Try a different building or fewer equipment requirements."}</p>
+                {hasFilters && <button type="button" onClick={resetFilters}>Clear filters and explore spaces <ArrowRight size={16} /></button>}
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="spaces-results-grid">
                 {shown.map((room) => (
                   <RoomCard key={room.id} room={room} />
                 ))}
               </div>
             )}
-            <p className="mt-3 text-xs text-muted-foreground">Pick a time on the facility's Availability tab; the server checks for conflicts when you book.</p>
+            <p className="spaces-booking-note"><Clock3 size={15} /> Availability varies by time. Open a space to view its calendar and request a booking.</p>
           </section>
         )}
       </div>

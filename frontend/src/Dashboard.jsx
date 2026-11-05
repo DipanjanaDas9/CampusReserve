@@ -16,6 +16,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import "./App.css";
+import { StudentPageHeader } from "./components/StudentPageHeader";
 
 const facilityImages = [
   "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80",
@@ -182,15 +183,14 @@ const filteredFacilities = useMemo(() => {
         </header>
 
         <div className="dashboard-content">
-          <section className="dashboard-welcome">
-            <h1>
-              Welcome back{firstName ? `, ${firstName}` : ""}! <span aria-hidden="true">👋</span>
-            </h1>
-            <p>
-              Find and reserve the perfect space for your meetings, study
-              sessions, or events.
-            </p>
-          </section>
+          <div className="student-page dashboard-page-heading">
+            <StudentPageHeader
+              eyebrow="YOUR CAMPUS, YOUR POSSIBILITIES"
+              title={`Welcome back${firstName ? `, ${firstName}` : ""}!`}
+              description="Make room for your next idea. Find a space to study, meet, or bring your team together."
+              action={{ to: "/search", label: "Find a space" }}
+            />
+          </div>
 
           <section className="dashboard-stats" aria-label="Reservation overview">
             <Link to="/reservations" className="dashboard-stat">

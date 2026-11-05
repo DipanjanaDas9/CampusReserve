@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Clock, MapPin } from "lucide-react";
+import { CalendarDays, Clock, FileText, ArrowRight } from "lucide-react";
 
 import { StudentLayout } from "../layouts/StudentLayout";
+import { StudentPageHeader } from "../components/StudentPageHeader";
 import { cn } from "../lib/utils";
 import {
   getMyReservations,
@@ -138,29 +139,19 @@ export function MyReservationsPage() {
 
   return (
     <StudentLayout active="reservations">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">My Reservations</h1>
-            <p className="text-sm text-muted-foreground">
-              View and manage your reservation requests.
-            </p>
+      <div className="student-page reservations-page mx-auto max-w-6xl">
+        <StudentPageHeader eyebrow="YOUR CAMPUS PLANS" title="My Reservations" description="A little planning. A lot of possibilities. Keep your campus bookings in one place." action={{ to: "/search", label: "Find a space" }}>
+          <div className="student-summary-grid">
+            {[{ label: "Upcoming bookings", value: items.filter(r => inTab(r, "upcoming")).length, icon: CalendarDays }, { label: "Awaiting approval", value: items.filter(r => r.status === "pending" && inTab(r, "upcoming")).length, icon: Clock }, { label: "Past bookings", value: items.filter(r => inTab(r, "past")).length, icon: FileText }].map(({label, value, icon: Icon}) => <div key={label}><span><Icon size={19} aria-hidden="true" /></span><div><strong>{loading ? "—" : value}</strong><p>{label}</p></div></div>)}
           </div>
-
-          <Link
-            to="/availability"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-brand"
-          >
-            New Reservation
-          </Link>
-        </div>
-
-        <div className="mb-4 inline-flex rounded-lg bg-secondary p-1">
+        </StudentPageHeader>
+        <div className="student-tabs" aria-label="Reservation filters">
           {TABS.map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
+              aria-pressed={tab === t}
               className={cn(
                 "rounded-md px-4 py-1.5 text-sm font-medium capitalize",
                 tab === t
@@ -179,26 +170,30 @@ export function MyReservationsPage() {
           </p>
         )}
 
-        <div className="space-y-3">
+        <div className="reservation-list" aria-live="polite">
           {loading && (
-            <div className="rounded-xl border bg-card py-14 text-center text-muted-foreground">
+            <div className="student-empty" role="status">
               Loading reservations...
             </div>
           )}
 
           {!loading && shown.length === 0 && (
-            <div className="rounded-xl border bg-card py-14 text-center text-muted-foreground shadow-card">
-              No reservations here.
+            <div className="student-empty">
+              <span className="student-empty-icon"><CalendarDays size={28} /></span>
+              <h2>{tab === "upcoming" ? "Make room for your next plan" : tab === "past" ? "Your booking history starts here" : "Nothing cancelled. All clear."}</h2>
+              <p>{tab === "upcoming" ? "Find a space for your next study session, meeting, or team project." : tab === "past" ? "Once your reservations end, you’ll find them here." : "Cancelled and rejected requests will appear here."}</p>
+              <Link to="/search">Explore campus spaces <ArrowRight size={15} /></Link>
             </div>
           )}
 
           {!loading && shown.map((r) => (
             <div
               key={r.id}
-              className="flex flex-wrap items-center gap-4 rounded-xl border bg-card p-5 shadow-card"
+              className="reservation-card"
             >
+              <div className="reservation-date-tile" aria-hidden="true"><span>{new Date(r.start_time).toLocaleDateString("en-US", { timeZone: CAMPUS_TIMEZONE, month: "short" })}</span><strong>{new Date(r.start_time).toLocaleDateString("en-US", { timeZone: CAMPUS_TIMEZONE, day: "numeric" })}</strong></div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="reservation-card-heading">
                   <span className="font-semibold">
                     {r.facility_name || `Facility #${r.facility_id}`}
                   </span>
@@ -225,7 +220,7 @@ export function MyReservationsPage() {
                   </span>
 
                   <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                     {r.purpose || "No purpose provided"}
                   </span>
                 </div>
@@ -241,6 +236,7 @@ export function MyReservationsPage() {
                 )}
               </div>
 
+              <div className="reservation-actions"><Link to={`/spaces/${r.facility_id}`}>View space <ArrowRight size={14} /></Link>
               {tab === "upcoming" && (
                 <button
                   type="button"
@@ -251,6 +247,7 @@ export function MyReservationsPage() {
                   {busyId === r.id ? "Cancelling..." : "Cancel"}
                 </button>
               )}
+              </div>
             </div>
           ))}
         </div>
