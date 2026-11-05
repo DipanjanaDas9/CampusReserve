@@ -19,6 +19,15 @@ npm install
 npm run dev                      # http://localhost:5173
 ```
 
+### Optional settings
+
+Set these in the environment or in `backend/.env`. The app runs without them, but the feature stays off:
+
+| Feature | Settings | Without them |
+| --- | --- | --- |
+| Password reset email | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, optional `SMTP_PORT` (default 587) and `FRONTEND_URL` | No email is sent. The page still shows its usual message, and the failure appears only in the backend log. |
+| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL` | The AI Assistant page reports that AI is not configured. |
+
 ## Administrator accounts
 
 Administrators cannot sign up through the app. Register the account on the Register

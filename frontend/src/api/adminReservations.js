@@ -35,9 +35,9 @@ export function getAdminReservations() {
   return adminRequest("/admin/reservations");
 }
 
-export function decideAdminReservation(id, status) {
+export function decideAdminReservation(id, status, reason = "") {
   return adminRequest(`/reservations/${id}/decision`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, reason: reason || null }),
   });
 }

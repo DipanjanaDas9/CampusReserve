@@ -233,6 +233,12 @@ export function MyReservationsPage() {
                 <div className="mt-1 text-xs text-muted-foreground">
                   Booking ID R-{r.id}
                 </div>
+
+                {r.status === "denied" && r.rejection_reason && (
+                  <p className="mt-2 text-sm text-destructive">
+                    Reason for rejection: {r.rejection_reason}
+                  </p>
+                )}
               </div>
 
               {tab === "upcoming" && (

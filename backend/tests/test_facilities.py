@@ -11,7 +11,7 @@ def test_admin_creates_updates_and_deletes_a_facility(client, admin):
     assert created.status_code == 201
     facility_id = created.json()["facility"]["id"]
 
-    assert client.get(f"/facilities/{facility_id}").json() == {"id": facility_id, **ROOM}
+    assert client.get(f"/facilities/{facility_id}").json() == {"id": facility_id, "is_active": True, **ROOM}
 
     updated = client.put(f"/facilities/{facility_id}", headers=admin, json={**ROOM, "capacity": 12})
     assert updated.status_code == 200

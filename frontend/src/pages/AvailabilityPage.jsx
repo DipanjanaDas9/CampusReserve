@@ -5,12 +5,12 @@ import {
   SLOT_HOURS,
   getFacilities,
   getAvailability,
-  startOfWeek,
   toISODate,
 } from "../api/availability";
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
+import { campusWeekStart, todayISO } from "../lib/datetime";
 const pad = (h) => `${String(h).padStart(2, "0")}:00`;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const fmtMonthDay = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -19,8 +19,8 @@ export function AvailabilityPage() {
   const [spaces, setSpaces] = useState([]);
   const [spaceId, setSpaceId] = useState("");
   const [roomsLoading, setRoomsLoading] = useState(true);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const [today] = useState(() => toISODate(new Date()));
+  const [weekStart, setWeekStart] = useState(campusWeekStart);
+  const [today] = useState(todayISO);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [selection, setSelection] = useState(null);
@@ -171,7 +171,7 @@ useEffect(() => {
             <button aria-label="Next week" onClick={() => shiftWeek(1)} className="rounded-md p-1.5 hover:bg-accent">
               <ChevronRight className="h-4 w-4"/>
             </button>
-            <button onClick={() => {setSelection(null);setData(null);setError(null);setWeekStart(startOfWeek(new Date()));}} className="absolute right-0 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent">
+            <button onClick={() => {setSelection(null);setData(null);setError(null);setWeekStart(campusWeekStart());}} className="absolute right-0 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent">
               Today
             </button>
           </div>

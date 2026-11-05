@@ -49,13 +49,17 @@ def decide_reservation(
                     detail="Only pending reservations can be reviewed"
                 )
 
+            rejection_reason = None
+            if decision.status == "denied":
+                rejection_reason = (decision.reason or "").strip() or None
+
             connection.execute(
                 """
                 UPDATE reservations
-                SET status = ?
+                SET status = ?, rejection_reason = ?
                 WHERE id = ?
                 """,
-                (decision.status, reservation_id)
+                (decision.status, rejection_reason, reservation_id)
             )
             
             if decision.status == "approved":
@@ -72,6 +76,8 @@ def decide_reservation(
                     f"Your reservation request for {reservation['facility_name']} "
                     f"has been rejected."
                 )
+                if rejection_reason:
+                    body += f" Reason: {rejection_reason}"
 
             connection.execute(
                 """
@@ -123,6 +129,7 @@ def get_all_reservations(
                 r.attendees,
                 r.purpose,
                 r.notes,
+                r.rejection_reason,
                 r.created_at
             FROM reservations r
             JOIN users u ON r.user_id = u.id

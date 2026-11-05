@@ -70,11 +70,13 @@ async function apiGet(path) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       typeof data?.detail === "string"
         ? data.detail
         : `API request failed (${response.status})`
     );
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -89,7 +91,8 @@ async function checkSlot(facilityId, date, hour) {
   const start = campusTimestamp(date, hour);
   const end = campusTimestamp(date, hour + 1);
 
-  if (new Date(end) <= new Date()) {
+  // The API refuses any start time that has passed, including the current hour.
+  if (new Date(start) <= new Date()) {
     return { date, hour, status: "unavailable" };
   }
 
@@ -99,9 +102,21 @@ async function checkSlot(facilityId, date, hour) {
     attendees: "1",
   });
 
-  const result = await apiGet(
-    `/facilities/${facilityId}/availability?${params}`
-  );
+  let result;
+
+  try {
+    result = await apiGet(
+      `/facilities/${facilityId}/availability?${params}`
+    );
+  } catch (err) {
+    // A 400 means the API refused this slot's times, for example because the
+    // hour began while the calendar was loading. Other failures are real errors.
+    if (err.status === 400) {
+      return { date, hour, status: "unavailable" };
+    }
+
+    throw err;
+  }
 
 let status = "available";
 

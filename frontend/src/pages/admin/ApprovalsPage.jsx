@@ -70,7 +70,7 @@ function mapReservation(r) {
     attendees: r.attendees,
     notes: r.notes || "",
     status: r.status === "denied" ? "rejected" : r.status,
-    reason: "",
+    reason: r.rejection_reason || "",
   };
 }
 
@@ -150,7 +150,7 @@ async function decide(id, status, reason = "") {
     const backendStatus =
       status === "rejected" ? "denied" : status;
 
-    await decideAdminReservation(id, backendStatus);
+    await decideAdminReservation(id, backendStatus, reason);
 
     const updated = await getAdminReservations();
 
@@ -332,7 +332,7 @@ function DetailPanel({
     { icon: CalendarDays, label: "Date & Time", value: <>{formatDate(r.date)}<span className="block">{formatTimeRange(r.start, r.end)} ({formatDuration(r.start, r.end)})</span></> },
     { icon: Users, label: "Expected Attendees", value: r.attendees },
     { icon: NotebookPen, label: "Additional Notes", value: r.notes || "No additional notes." },
-    ...(r.status === "rejected" ? [{ icon: X, label: "Rejection Reason", value: r.reason }] : []),
+    ...(r.status === "rejected" ? [{ icon: X, label: "Rejection Reason", value: r.reason || "No reason recorded." }] : []),
   ];
 
   function submitReject(e) {

@@ -15,3 +15,4 @@ class ReservationRequest(BaseModel):
 
 class ReservationDecision(BaseModel):
     status: Literal["approved", "denied"]
+    reason: str | None = Field(default=None, max_length=500)
