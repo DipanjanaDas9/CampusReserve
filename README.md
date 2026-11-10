@@ -76,6 +76,23 @@ For **development/demo only**, run the explicit seed command from `backend`:
 python scripts/seed_demo.py --demo
 ```
 
+To create the optional demo student and administrator accounts, set
+`CAMPUSRESERVE_ENV` to `development` or `demo` and set
+`CAMPUSRESERVE_DEMO_STUDENT1_PASSWORD`, `CAMPUSRESERVE_DEMO_STUDENT2_PASSWORD`,
+and `CAMPUSRESERVE_DEMO_ADMIN_PASSWORD` in the environment. Each password must
+be 8–128 characters. Then run from `backend`:
+
+```bash
+python scripts/seed_demo_users.py --demo
+```
+
+The script hashes passwords with the application's existing password hasher,
+assigns the admin role only to `admin@demo.com`, and leaves existing accounts
+and passwords unchanged. It requires both the explicit flag and a development
+or demo environment; do not run it against production. Keep the passwords in
+your local environment or an untracked local `.env` file, never in source
+control. Existing demo users are not modified when the command is rerun.
+
 This uses the existing SQLite configuration and inserts **30 fictional university
 rooms, not verified UTA room information**:
 
