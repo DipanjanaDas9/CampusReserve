@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ai.extractor import extract_room_requirements
+from ai.ranking import rank_rooms
 from app.core.dependencies import get_current_user
 from app.routers.availability import check_availability
 from app.routers.facilities import get_facilities
@@ -259,9 +260,7 @@ def ai_search_rooms(
         if availability["available"]:
             results.append(facility)
 
-    results.sort(key=lambda room: (room["capacity"], room["name"]))
-
     return {
         "interpreted_requirements": interpreted,
-        "results": results,
+        "results": rank_rooms(results, interpreted),
     }

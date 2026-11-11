@@ -1,0 +1,497 @@
+{
+  "reference_date": "2026-03-04",
+  "reference_note": "Wednesday. Relative dates in the queries are resolved from this date.",
+  "target": 0.9,
+  "cases": [
+    {
+      "id": "group-study",
+      "query": "Group study room for 4 people tomorrow from 2 PM to 4 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 4,
+        "date": "2026-03-05",
+        "start_time": "14:00",
+        "end_time": "16:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "projector-presentation",
+      "query": "Room with a projector for a presentation tomorrow 10 to 11 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": null,
+        "date": "2026-03-05",
+        "start_time": "10:00",
+        "end_time": "11:00",
+        "equipment": [
+          "projector"
+        ]
+      }
+    },
+    {
+      "id": "solo-quiet",
+      "query": "Quiet space for one person tomorrow 9 to 10 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 1,
+        "date": "2026-03-05",
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "team-meeting-vc",
+      "query": "Meeting room for 10 people with video conferencing tomorrow 1 to 3 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "meeting room",
+        "group_size": 10,
+        "date": "2026-03-05",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "equipment": [
+          "video conferencing"
+        ]
+      }
+    },
+    {
+      "id": "library-no-times",
+      "query": "Find a study room for 6 people on the third floor of the library tomorrow with a projector",
+      "expected": {
+        "building_name": [
+          "library",
+          "central library"
+        ],
+        "floor_number": 3,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 6,
+        "date": "2026-03-05",
+        "start_time": null,
+        "end_time": null,
+        "equipment": [
+          "projector"
+        ]
+      },
+      "note": "Times are not given and must stay null."
+    },
+    {
+      "id": "room-number",
+      "query": "I need room ENG-312 on March 12 from 10:00 to 12:00 for 15 people",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": "ENG-312",
+        "room_type": null,
+        "group_size": 15,
+        "date": "2026-03-12",
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "equipment": []
+      },
+      "note": "Building is not stated; it must not be inferred from the room number."
+    },
+    {
+      "id": "weekday-friday",
+      "query": "Computer lab in the Engineering Building for 20 students on Friday from 9 AM to noon",
+      "expected": {
+        "building_name": "Engineering Building",
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "computer lab",
+        "group_size": 20,
+        "date": "2026-03-06",
+        "start_time": "09:00",
+        "end_time": "12:00",
+        "equipment": []
+      },
+      "note": "Friday after Wednesday 2026-03-04 is 2026-03-06."
+    },
+    {
+      "id": "two-items",
+      "query": "Conference room with a whiteboard and a monitor for 8 people on March 20, 3:30 to 5 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "conference room",
+        "group_size": 8,
+        "date": "2026-03-20",
+        "start_time": "15:30",
+        "end_time": "17:00",
+        "equipment": [
+          "whiteboard",
+          "monitor"
+        ]
+      }
+    },
+    {
+      "id": "ground-floor",
+      "query": "Any room on the ground floor of the Student Center for 12 people tomorrow 11am-1pm",
+      "expected": {
+        "building_name": "Student Center",
+        "floor_number": 0,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 12,
+        "date": "2026-03-05",
+        "start_time": "11:00",
+        "end_time": "13:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "science-collab",
+      "query": "Collaboration room in the Science Building, second floor, for 5 people, March 10 from 4 to 6 PM",
+      "expected": {
+        "building_name": "Science Building",
+        "floor_number": 2,
+        "room_number": null,
+        "room_type": "collaboration room",
+        "group_size": 5,
+        "date": "2026-03-10",
+        "start_time": "16:00",
+        "end_time": "18:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "large-event",
+      "query": "Multipurpose room for an event with 80 people on April 2 from 6 PM to 9 PM with a projector",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "multipurpose room",
+        "group_size": 80,
+        "date": "2026-04-02",
+        "start_time": "18:00",
+        "end_time": "21:00",
+        "equipment": [
+          "projector"
+        ]
+      }
+    },
+    {
+      "id": "no-times",
+      "query": "Study room for 3 tomorrow",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 3,
+        "date": "2026-03-05",
+        "start_time": null,
+        "end_time": null,
+        "equipment": []
+      }
+    },
+    {
+      "id": "group-only",
+      "query": "Book a room for 7 people",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 7,
+        "date": null,
+        "start_time": null,
+        "end_time": null,
+        "equipment": []
+      }
+    },
+    {
+      "id": "computers",
+      "query": "Need a space with computers for 16 people tomorrow from 9 AM to 11 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 16,
+        "date": "2026-03-05",
+        "start_time": "09:00",
+        "end_time": "11:00",
+        "equipment": [
+          "computers"
+        ]
+      }
+    },
+    {
+      "id": "room-number-only",
+      "query": "Room LIB-202 tomorrow 8 to 10 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": "LIB-202",
+        "room_type": null,
+        "group_size": null,
+        "date": "2026-03-05",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "no-room-type",
+      "query": "Space for a 9-person team with a monitor on March 18, 13:00-14:30",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 9,
+        "date": "2026-03-18",
+        "start_time": "13:00",
+        "end_time": "14:30",
+        "equipment": [
+          "monitor"
+        ]
+      },
+      "note": "No room type is named, so it must stay null."
+    },
+    {
+      "id": "lab-first-floor",
+      "query": "Laboratory for 12 people on the first floor of the Engineering Building tomorrow 2-5 PM",
+      "expected": {
+        "building_name": "Engineering Building",
+        "floor_number": 1,
+        "room_number": null,
+        "room_type": "laboratory",
+        "group_size": 12,
+        "date": "2026-03-05",
+        "start_time": "14:00",
+        "end_time": "17:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "vague-afternoon",
+      "query": "Somewhere to study with a friend this afternoon",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 2,
+        "date": "2026-03-04",
+        "start_time": null,
+        "end_time": null,
+        "equipment": []
+      },
+      "note": "'This afternoon' is today but gives no exact times."
+    },
+    {
+      "id": "next-week",
+      "query": "Meeting room for 6 next week",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "meeting room",
+        "group_size": 6,
+        "date": null,
+        "start_time": null,
+        "end_time": null,
+        "equipment": []
+      },
+      "note": "'Next week' is not a single date, so date must stay null."
+    },
+    {
+      "id": "range-with-minutes",
+      "query": "Projector and whiteboard needed for 25 people, March 25 from 10 AM to 12:30 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 25,
+        "date": "2026-03-25",
+        "start_time": "10:00",
+        "end_time": "12:30",
+        "equipment": [
+          "projector",
+          "whiteboard"
+        ]
+      }
+    },
+    {
+      "id": "evening",
+      "query": "Study room on the 5th floor of the Central Library for 2 people tomorrow 7 to 9 PM",
+      "expected": {
+        "building_name": "Central Library",
+        "floor_number": 5,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 2,
+        "date": "2026-03-05",
+        "start_time": "19:00",
+        "end_time": "21:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "basement",
+      "query": "Basement room for 4 people on March 6 from 10 to 11 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": -1,
+        "room_number": null,
+        "room_type": null,
+        "group_size": 4,
+        "date": "2026-03-06",
+        "start_time": "10:00",
+        "end_time": "11:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "weekday-and-date",
+      "query": "A conference room with video conferencing for 20 on Monday, March 9, from 2 to 3 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "conference room",
+        "group_size": 20,
+        "date": "2026-03-09",
+        "start_time": "14:00",
+        "end_time": "15:00",
+        "equipment": [
+          "video conferencing"
+        ]
+      }
+    },
+    {
+      "id": "room-code-event",
+      "query": "I want SC-110 for 50 people on March 27 from 5 PM to 8 PM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": "SC-110",
+        "room_type": null,
+        "group_size": 50,
+        "date": "2026-03-27",
+        "start_time": "17:00",
+        "end_time": "20:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "everything",
+      "query": "Collaboration room for 10 with a monitor and whiteboard on the second floor of the Science Building tomorrow from 10:30 AM to 12 PM",
+      "expected": {
+        "building_name": "Science Building",
+        "floor_number": 2,
+        "room_number": null,
+        "room_type": "collaboration room",
+        "group_size": 10,
+        "date": "2026-03-05",
+        "start_time": "10:30",
+        "end_time": "12:00",
+        "equipment": [
+          "monitor",
+          "whiteboard"
+        ]
+      }
+    },
+    {
+      "id": "date-only",
+      "query": "Can I get a room tomorrow?",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": null,
+        "group_size": null,
+        "date": "2026-03-05",
+        "start_time": null,
+        "end_time": null,
+        "equipment": []
+      }
+    },
+    {
+      "id": "noon-start",
+      "query": "Meeting room in the Student Center for 14 people on March 13 from noon to 2 PM with video conferencing",
+      "expected": {
+        "building_name": "Student Center",
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "meeting room",
+        "group_size": 14,
+        "date": "2026-03-13",
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "equipment": [
+          "video conferencing"
+        ]
+      }
+    },
+    {
+      "id": "words-for-numbers",
+      "query": "Study room for four people on March 11 between 1 and 3 in the afternoon",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 4,
+        "date": "2026-03-11",
+        "start_time": "13:00",
+        "end_time": "15:00",
+        "equipment": []
+      }
+    },
+    {
+      "id": "lab-not-equipment",
+      "query": "Computer lab for a class of 22 on Thursday, March 19 from 9 to 10:30 AM",
+      "expected": {
+        "building_name": null,
+        "floor_number": null,
+        "room_number": null,
+        "room_type": "computer lab",
+        "group_size": 22,
+        "date": "2026-03-19",
+        "start_time": "09:00",
+        "end_time": "10:30",
+        "equipment": []
+      },
+      "note": "Computers are implied by the room type, not requested as equipment."
+    },
+    {
+      "id": "library-shorthand",
+      "query": "Quiet study room with a monitor for 1 person on the second floor of the library, March 16, 8 to 10 AM",
+      "expected": {
+        "building_name": [
+          "library",
+          "central library"
+        ],
+        "floor_number": 2,
+        "room_number": null,
+        "room_type": "study room",
+        "group_size": 1,
+        "date": "2026-03-16",
+        "start_time": "08:00",
+        "end_time": "10:00",
+        "equipment": [
+          "monitor"
+        ]
+      }
+    }
+  ]
+}

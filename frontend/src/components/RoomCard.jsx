@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Users } from "lucide-react";
+import { Check, MapPin, Users } from "lucide-react";
 import { formatDuration, formatTimeRange } from "../lib/datetime";
 
 export function EquipmentChips({ items }) {
@@ -12,6 +12,33 @@ export function EquipmentChips({ items }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** AI search only: the fit score and why the room was recommended. Renders nothing for other searches. */
+function MatchExplanation({ room }) {
+  if (room.match_score == null) return null;
+  return (
+    <div className="mt-3 rounded-lg bg-primary/5 p-3 text-sm">
+      <p className="font-semibold text-foreground">
+        Fit score: {room.match_score}/100
+        <span className="ml-2 text-xs font-normal text-muted-foreground">Smaller rooms that still fit your group score higher.</span>
+      </p>
+      {room.match_reasons?.length > 0 && (
+        <ul className="mt-1 flex flex-col gap-0.5 text-foreground" aria-label="Why this room matches">
+          {room.match_reasons.map((reason) => (
+            <li key={reason} className="flex items-start gap-1.5">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> {reason}
+            </li>
+          ))}
+        </ul>
+      )}
+      {room.match_tradeoffs?.length > 0 && (
+        <ul className="mt-1 text-xs text-muted-foreground" aria-label="Things to consider">
+          {room.match_tradeoffs.map((note) => <li key={note}>{note}</li>)}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -36,6 +63,7 @@ export function RoomCard({ room, startTime, endTime }) {
           <EquipmentChips items={room.equipment} />
         </div>
         {room.description && <p className="mt-2 text-sm text-muted-foreground">{room.description}</p>}
+        <MatchExplanation room={room} />
       </div>
       <div className="flex shrink-0 flex-row items-center justify-between gap-3 sm:w-44 sm:flex-col sm:items-end sm:justify-between sm:py-1">
         <div className="sm:text-right">
@@ -63,7 +91,7 @@ export function RoomCard({ room, startTime, endTime }) {
   );
 }
 
-export function SortSelect({ id, value, onChange }) {
+export function SortSelect({ id, value, onChange, bestMatch = false }) {
   return (
     <label htmlFor={id} className="flex items-center gap-2 text-sm text-muted-foreground">
       Sort by
@@ -73,6 +101,7 @@ export function SortSelect({ id, value, onChange }) {
         onChange={(e) => onChange(e.target.value)}
         className="h-9 rounded-md border border-input bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
+        {bestMatch && <option value="match">Best match</option>}
         <option value="capacity">Capacity</option>
         <option value="name">Name</option>
       </select>
