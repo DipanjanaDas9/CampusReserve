@@ -28,7 +28,7 @@ export function AiFinderPage() {
   const [result, setResult] = useState(null); // { interpreted, rooms, isSample, times }
   const [editing, setEditing] = useState(false);
   const [overrides, setOverrides] = useState({ date: "", startTime: "", endTime: "" });
-  const [sortBy, setSortBy] = useState("capacity");
+  const [sortBy, setSortBy] = useState("match");
 
   async function runSearch(extra = {}) {
     setError("");
@@ -150,7 +150,7 @@ export function AiFinderPage() {
                   </h2>
                   {(result.isSample || result.rooms.some((room) => room.isSample)) && <SampleDataLabel />}
                 </div>
-                <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} />
+                <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} bestMatch />
               </div>
               {result.rooms.length === 0 ? (
                 <div className="ai-empty"><Search size={28} /><h3>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "A few more details will help" : "Let’s try a different fit"}</h3><p>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "Add a date, start time, and end time using Edit above, then search again." : "No rooms match this request. Try a different time, a smaller group, or fewer equipment requirements."}</p><button type="button" onClick={() => { queryRef.current?.focus(); queryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Refine your request <ArrowRight size={15} /></button></div>

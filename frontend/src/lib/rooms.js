@@ -1,8 +1,11 @@
 import { ROOM_PHOTOS } from "../data/sampleRooms.js";
 
-/** Sort search results by "capacity" (then name) or "name". */
+const byCapacity = (a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name);
+
+/** Sort search results by "match" (AI fit score, then capacity), "capacity" (then name) or "name". */
 export function sortRooms(rooms, by) {
-  return [...rooms].sort((a, b) => (by === "name" ? a.name.localeCompare(b.name) : a.capacity - b.capacity || a.name.localeCompare(b.name)));
+  if (by === "match") return [...rooms].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0) || byCapacity(a, b));
+  return [...rooms].sort((a, b) => (by === "name" ? a.name.localeCompare(b.name) : byCapacity(a, b)));
 }
 
 /** Backend facility (GET /facilities) -> the shape RoomCard and the details page use. */

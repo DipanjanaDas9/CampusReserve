@@ -144,4 +144,42 @@ Results are actual facilities, filtered by catalog requirements, active
 status, maximum capacity, and every requested equipment item. Each candidate must
 pass the same time-window and booking-conflict checks as manual availability.
 Manual Search Spaces remains independent of Gemini and works without an API key.
+AI tests mock the Gemini response; a live Gemini request requires configured
+credentials and quota.
 
+### Ranking of AI results
+
+Every room in the results already meets the whole request, so ranking only
+decides the order. Each result has a `match_score` from 0 to 100,
+`match_reasons` listing each requirement it meets, and `match_tradeoffs` noting
+anything to consider. A room loses up to 50 points in proportion to the share of
+its seats your group would leave empty, so the smallest room that fits comes
+first. Ties go to the smaller room, then the name. Without a group size, every
+room scores 100. The score is calculated in `backend/ai/ranking.py`, not by
+Gemini, so it cannot add rooms or change availability. The AI page sorts by
+**Best match** by default and shows the score and reasons on each room.
+
+### Measuring AI extraction accuracy
+
+`backend/ai/evaluation_cases.json` holds 30 sample requests with the details
+Gemini should extract. Relative dates such as "tomorrow" use the fixed reference
+date in that file. To measure accuracy against the 90% target, set
+`GEMINI_API_KEY` and run from `backend`:
+
+```bash
+python scripts/evaluate_ai.py --output ai-evaluation.json
+```
+
+Each case sends one Gemini request, so a run uses about 30 requests of your
+quota. Use `--limit 5` for a quick trial and `--delay` to space requests out.
+The command prints which fields each request got wrong and three numbers:
+
+| Measure | What it counts |
+| --- | --- |
+| **Stated-field accuracy** (compared with the target) | Details the request gave, such as group size or date, that were extracted correctly |
+| Did not invent | Details the request left out that correctly stayed empty |
+| Every field correct | Requests where all nine fields were right |
+
+It exits with 0 when stated-field accuracy reaches 90%, 1 when it does not, and
+2 when no Gemini key is set. Results vary between runs and models, so record the
+model and date with any result you report.
