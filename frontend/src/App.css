@@ -232,6 +232,15 @@
   padding: 10px clamp(24px, 4vw, 54px) 45px;
 }
 
+.admin-page-content {
+  min-height: calc(100vh - 73px);
+  background: radial-gradient(
+    ellipse 75% 290px at 40% 0%,
+    oklch(0.93 0.035 258 / 0.7),
+    transparent 70%
+  );
+}
+
 .dashboard-welcome {
   margin: 0 0 30px;
 }
