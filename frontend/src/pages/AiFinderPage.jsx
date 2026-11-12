@@ -6,7 +6,6 @@ import { StudentLayout } from "../layouts/StudentLayout";
 import { aiSearchRooms } from "../api/rooms";
 import { RoomCard, SortSelect } from "../components/RoomCard";
 import { sortRooms } from "../lib/rooms";
-import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
 import { formatDate, formatDuration, formatTimeRange, relativeDay, todayISO } from "../lib/datetime";
 
@@ -25,7 +24,7 @@ export function AiFinderPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState(null); // { interpreted, rooms, isSample, times }
+  const [result, setResult] = useState(null); // { interpreted, rooms, times }
   const [editing, setEditing] = useState(false);
   const [overrides, setOverrides] = useState({ date: "", startTime: "", endTime: "" });
   const [sortBy, setSortBy] = useState("match");
@@ -125,22 +124,16 @@ export function AiFinderPage() {
 
         {result && !loading && (
           <>
-            {result.interpreted ? (
-              <Interpretation
-                interpreted={result.interpreted}
-                times={result.times}
-                editing={editing}
-                onEdit={() => setEditing((v) => !v)}
-                overrides={overrides}
-                setOverrides={setOverrides}
-                onSearchAgain={onSearchAgain}
-                loading={loading}
-              />
-            ) : (
-              <StatusMessage className="mt-4">
-                The AI search service isn't available on this server yet, so your request could not be interpreted. Showing sample rooms instead.
-              </StatusMessage>
-            )}
+            <Interpretation
+              interpreted={result.interpreted}
+              times={result.times}
+              editing={editing}
+              onEdit={() => setEditing((v) => !v)}
+              overrides={overrides}
+              setOverrides={setOverrides}
+              onSearchAgain={onSearchAgain}
+              loading={loading}
+            />
 
             <section className="mt-6" aria-labelledby="recommended-heading" aria-live="polite">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -148,7 +141,6 @@ export function AiFinderPage() {
                   <h2 id="recommended-heading" className="text-lg font-bold text-foreground">
                     Spaces for your plans <span className="ai-count">{result.rooms.length}</span>
                   </h2>
-                  {(result.isSample || result.rooms.some((room) => room.isSample)) && <SampleDataLabel />}
                 </div>
                 <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} bestMatch />
               </div>

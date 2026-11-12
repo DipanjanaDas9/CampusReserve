@@ -1,7 +1,6 @@
 import { ArrowDown, ArrowUp, Building, CalendarCheck, ClipboardCheck, UserX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../../layouts/AdminLayout";
-import { SampleDataLabel } from "../../components/SampleDataLabel";
 import { cn } from "../../lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -233,6 +232,7 @@ export function AdminDashboardPage() {
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadedAt, setLoadedAt] = useState(0); // when the data was fetched; "ended" is judged against it
 
   useEffect(() => {
     let active = true;
@@ -286,6 +286,7 @@ export function AdminDashboardPage() {
         setReservations(reservationsData);
         setNoShows(noShowsData.no_shows);
         setFacilities(facilitiesData);
+        setLoadedAt(Date.now());
         setError("");
       } catch (err) {
         if (active) {
@@ -310,7 +311,7 @@ export function AdminDashboardPage() {
     (r) => r.status === "pending"
   ).length;
 
-  const now = Date.now();
+  const now = loadedAt;
 
   const endedApproved = reservations.filter(
     (r) =>

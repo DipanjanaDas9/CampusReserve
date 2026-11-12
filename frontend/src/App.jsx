@@ -12,7 +12,6 @@ import { SearchSpacesPage } from "./pages/SearchSpacesPage.jsx";
 import { FacilityDetailsPage } from "./pages/FacilityDetailsPage.jsx";
 import { RequireAdmin } from "./components/RequireAdmin.jsx";
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage.jsx";
-import { ComingSoonPage } from "./pages/admin/ComingSoonPage.jsx";
 import { ApprovalsPage } from "./pages/admin/ApprovalsPage.jsx";
 import { ManageFacilitiesPage } from "./pages/admin/ManageFacilitiesPage.jsx";
 import { UsersPage } from "./pages/admin/UsersPage";

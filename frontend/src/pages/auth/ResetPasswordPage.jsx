@@ -14,7 +14,7 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [linkStatus, setLinkStatus] = useState("checking");
+  const [linkStatus, setLinkStatus] = useState(token ? "checking" : "invalid");
 
   // Remove the reset token from the visible URL.
   useEffect(() => {
@@ -32,10 +32,7 @@ export function ResetPasswordPage() {
 
   // Check whether the reset link is still valid.
   useEffect(() => {
-    if (!token) {
-      setLinkStatus("invalid");
-      return;
-    }
+    if (!token) return; // linkStatus already starts as "invalid"
 
     let active = true;
 
