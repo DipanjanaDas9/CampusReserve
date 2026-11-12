@@ -1,7 +1,16 @@
-import { Link, useNavigate } from "react-router-dom";
-import { BarChart3, Bell, Building, Building2, ClipboardCheck, LayoutDashboard, LogOut, Users } from "lucide-react";
-import { cn } from "../lib/utils";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  BarChart3,
+  Bell,
+  Building,
+  Building2,
+  ClipboardCheck,
+  LayoutDashboard,
+  LogOut,
+  Users,
+} from "lucide-react";
 import { currentUser } from "../lib/adminAccess";
+import "../App.css";
 
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, to: "/admin" },
@@ -12,57 +21,86 @@ const NAV = [
   { key: "notifications", label: "Notifications", icon: Bell, to: "/admin/notifications" },
 ];
 
-/** Same look as StudentLayout, with the administrator navigation. */
 export function AdminLayout({ active, children }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const user = currentUser();
-  const initials = user?.name?.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "AD";
+  const initials =
+    user?.name
+      ?.trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "AD";
+
+  function handleLogout() {
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("campus_user");
+    navigate("/login", { replace: true });
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-background md:flex-row">
-      <aside className="flex w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:h-screen md:w-60 md:self-start md:overflow-y-auto">
-          <div className="flex items-center gap-2 px-5 py-6 text-base font-bold">
-          <Building2 className="h-6 w-6 shrink-0 text-sidebar-primary" aria-hidden="true" />
-          CampusReserve
-        </div>
-        <nav className="flex-1 space-y-1 px-3" aria-label="Admin navigation">
-          {NAV.map(({ key, label, icon: Icon, to }) => (
-            <Link
-              key={key}
-              to={to}
-              aria-current={key === active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-                key === active ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground/80 hover:bg-sidebar-accent"
-              )}
-            >
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              {label}
-            </Link>
-          ))}
+    <div className="dashboard">
+      <aside className="dashboard-sidebar">
+        <Link to="/admin" className="dashboard-brand">
+          <Building2 aria-hidden="true" />
+          <span>CampusReserve</span>
+        </Link>
+
+        <nav className="dashboard-nav" aria-label="Admin navigation">
+          {NAV.map(({ key, label, icon: Icon, to }) => {
+            const isActive =
+              active === key ||
+              (key === "dashboard" && location.pathname === "/admin");
+
+            return (
+              <Link
+                key={key}
+                to={to}
+                aria-current={isActive ? "page" : undefined}
+                className={`dashboard-nav-link${isActive ? " is-active" : ""}`}
+              >
+                <Icon aria-hidden="true" />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
         </nav>
-        <div className="flex items-center gap-3 border-t border-sidebar-border px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold">{initials}</div>
-          <div className="min-w-0 flex-1 text-sm">
-            <div className="truncate font-medium">{user?.name || "Admin User"}</div>
-            <div className="text-xs text-sidebar-foreground/60">Administrator</div>
+
+        <div className="dashboard-account">
+          <div className="account-avatar">{initials}</div>
+          <div className="account-details">
+            <strong>{user?.name || "Administrator"}</strong>
+            <span>{user?.email || "Campus administrator"}</span>
           </div>
           <button
             type="button"
+            className="sidebar-logout"
+            onClick={handleLogout}
             aria-label="Log out"
             title="Log out"
-            className="rounded-md p-1.5 hover:bg-sidebar-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-            onClick={() => {
-              sessionStorage.removeItem("access_token");
-              sessionStorage.removeItem("campus_user");
-              navigate("/login");
-            }}
           >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
+            <LogOut aria-hidden="true" />
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-x-auto">
-        <div className="p-6 md:p-10">{children}</div>
+
+      <main className="dashboard-main">
+        <header className="dashboard-topbar">
+          <Link
+            to="/admin/notifications"
+            className="topbar-icon-button"
+            aria-label="Notifications"
+          >
+            <Bell aria-hidden="true" />
+          </Link>
+          <div className="topbar-avatar" aria-label={user?.name || "Administrator"}>
+            {initials}
+          </div>
+        </header>
+
+        <div className="dashboard-content admin-page-content">{children}</div>
       </main>
     </div>
   );
