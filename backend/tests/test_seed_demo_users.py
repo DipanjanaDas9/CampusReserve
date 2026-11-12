@@ -19,16 +19,32 @@ def test_demo_user_seeder_requires_development_or_demo_environment(monkeypatch):
         seed_demo_users()
 
 
+
 def test_demo_user_seeder_requires_all_passwords_before_database_changes(
-    monkeypatch, tmp_path
+    monkeypatch,
 ):
     monkeypatch.setenv("CAMPUSRESERVE_ENV", "demo")
-    monkeypatch.setattr(db_connection, "DATABASE_PATH", tmp_path / "not-created.db")
 
-    with pytest.raises(RuntimeError, match="CAMPUSRESERVE_DEMO_STUDENT1_PASSWORD"):
+    for _, _, variable, _ in DEMO_USERS:
+        monkeypatch.delenv(variable, raising=False)
+
+    with db_connection.get_connection() as connection:
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM users"
+        ).fetchone()["total"]
+
+    with pytest.raises(
+        RuntimeError,
+        match="CAMPUSRESERVE_DEMO_STUDENT1_PASSWORD",
+    ):
         seed_demo_users()
 
-    assert not db_connection.DATABASE_PATH.exists()
+    with db_connection.get_connection() as connection:
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM users"
+        ).fetchone()["total"]
+
+    assert before == after
 
 
 def test_demo_user_seeder_creates_accounts_that_can_log_in(client, monkeypatch):

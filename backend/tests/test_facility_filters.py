@@ -58,8 +58,10 @@ def test_building_filter_is_parameterized(client, catalog):
 @pytest.mark.parametrize('raw', ['broken-json', '{"Monitor": true}', '["Monitor", 42]', 'null'])
 def test_invalid_legacy_equipment_does_not_break_list_or_details(client, catalog, raw, caplog):
     with closing(get_connection()) as connection, connection:
-        room_id = connection.execute('SELECT id FROM facilities ORDER BY id LIMIT 1').fetchone()[0]
-        connection.execute('UPDATE facilities SET equipment=? WHERE id=?', (raw, room_id))
+        room_id = connection.execute(
+            "SELECT id FROM facilities ORDER BY id LIMIT 1"
+        ).fetchone()["id"]
+        connection.execute("UPDATE facilities SET equipment = %s WHERE id = %s",(raw, room_id),)
     listed = client.get('/facilities')
     assert listed.status_code == 200
     assert next(r for r in listed.json() if r['id'] == room_id)['equipment'] == []
@@ -67,8 +69,10 @@ def test_invalid_legacy_equipment_does_not_break_list_or_details(client, catalog
     assert 'Invalid equipment JSON' in caplog.text
     assert room_id not in [r['id'] for r in client.get('/facilities', params={'equipment': 'Monitor'}).json()]
     with closing(get_connection()) as connection:
-        assert connection.execute('SELECT equipment FROM facilities WHERE id=?', (room_id,)).fetchone()[0] == raw
-
+        assert connection.execute(
+            "SELECT equipment FROM facilities WHERE id=%s",
+            (room_id,),
+        ).fetchone()["equipment"] == raw
 
 def test_sqlite_json_equipment_round_trip(client, admin):
     from test_facilities import ROOM
@@ -78,8 +82,12 @@ def test_sqlite_json_equipment_round_trip(client, admin):
     room_id = created.json()['facility']['id']
     assert client.get(f'/facilities/{room_id}').json()['equipment'] == payload['equipment']
     with closing(get_connection()) as connection:
-        assert json.loads(connection.execute('SELECT equipment FROM facilities WHERE id=?', (room_id,)).fetchone()[0]) == payload['equipment']
-
+        assert json.loads(
+            connection.execute(
+                "SELECT equipment FROM facilities WHERE id=%s",
+                (room_id,),
+            ).fetchone()["equipment"]
+        ) == payload["equipment"]
 
 def test_catalog_filters_do_not_bypass_booking_or_availability_rules(client, admin, student, catalog):
     from conftest import slot

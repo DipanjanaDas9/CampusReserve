@@ -213,14 +213,9 @@ def update_facility_status(
                 UPDATE facilities
                 SET is_active = %s
                 WHERE id = %s
-                FOR UPDATE
                 """,
-                (
-                    1 if status.is_active else 0,
-                    facility_id,
-                ),
+                (int(status.is_active), facility_id),
             )
-
             if cursor.rowcount == 0:
                 raise HTTPException(
                     status_code=404,

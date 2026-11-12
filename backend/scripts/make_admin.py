@@ -7,7 +7,6 @@ then run from the backend folder:
 """
 
 import sys
-from contextlib import closing
 from pathlib import Path
 
 # Make the backend's `app` package importable when run as a script.
@@ -18,18 +17,25 @@ from app.db.database import initialize_database  # noqa: E402
 
 
 def make_admin(email: str):
+    email = email.strip().lower()
+
     with get_connection() as connection:
         cursor = connection.execute(
-            "UPDATE users SET role = 'admin' WHERE email = %s",
+            """
+            UPDATE users
+            SET role = 'admin'
+            WHERE LOWER(email) = %s
+            """,
             (email,),
         )
 
         updated = cursor.rowcount
 
     if updated == 0:
-        return f"No user found with email: {email}"
+        raise SystemExit(f"No user found with email: {email}")
 
     return f"Administrator role assigned to: {email}"
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
