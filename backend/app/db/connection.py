@@ -1,10 +1,23 @@
-import sqlite3
+import os
 from pathlib import Path
 
-DATABASE_PATH = Path(__file__).resolve().parents[2] / "campusreserve.db"
+import psycopg
+from dotenv import load_dotenv
+from psycopg.rows import dict_row
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
 
 def get_connection():
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL must be configured."
+        )
+
+    return psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        connect_timeout=10,
+    )

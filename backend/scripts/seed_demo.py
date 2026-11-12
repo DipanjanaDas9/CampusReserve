@@ -17,7 +17,6 @@ from app.db.catalog import seed_demo_catalog  # noqa: E402
 def seed_demo():
     initialize_database()
     with closing(get_connection()) as connection, connection:
-        connection.execute("BEGIN IMMEDIATE")
         return seed_demo_catalog(connection)
 
 

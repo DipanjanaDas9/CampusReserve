@@ -19,7 +19,6 @@ def decide_reservation(
 ):
     with closing(get_connection()) as connection:
         try:
-            connection.execute("BEGIN IMMEDIATE")
 
             reservation = connection.execute(
                 """
@@ -32,7 +31,8 @@ def decide_reservation(
                     r.end_time
                 FROM reservations r
                 JOIN facilities f ON r.facility_id = f.id
-                WHERE r.id = ?
+                WHERE r.id = %s
+                FOR UPDATE OF r
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -56,8 +56,8 @@ def decide_reservation(
             connection.execute(
                 """
                 UPDATE reservations
-                SET status = ?, rejection_reason = ?
-                WHERE id = ?
+                SET status = %s, rejection_reason = %s
+                WHERE id = %s
                 """,
                 (decision.status, rejection_reason, reservation_id)
             )
@@ -83,7 +83,7 @@ def decide_reservation(
                 """
                 INSERT INTO notifications
                     (user_id, reservation_id, kind, title, body)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     reservation["user_id"],

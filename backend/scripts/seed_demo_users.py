@@ -59,12 +59,11 @@ def seed_demo_users(environment=None):
     initialize_database()
     added = 0
     with closing(get_connection()) as connection, connection:
-        connection.execute("BEGIN IMMEDIATE")
         for user in users:
             cursor = connection.execute(
                 """
                 INSERT INTO users (name, email, password_hash, role)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT(email) DO NOTHING
                 """,
                 user,
