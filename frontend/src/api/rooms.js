@@ -1,8 +1,6 @@
-// Room search against the FastAPI backend (GET /rooms/search, POST /rooms/ai-search).
-// These endpoints are on feature/ai-room-search and not yet on `dev`, so a network
-// error or 404 falls back to sample rooms, flagged with isSample.
-import { SLOT_HOURS, sampleSlotStatus } from "./availability";
-import { ROOM_PHOTOS, SAMPLE_ROOMS } from "../data/sampleRooms";
+// Room search against the FastAPI backend: manual search over GET /facilities plus
+// availability checks, and AI search over POST /rooms/ai-search. Results are always real rooms.
+import { ROOM_PHOTOS } from "../data/sampleRooms";
 import { authenticatedFetch } from "./authenticatedFetch";
 import {
   getFacilities,
@@ -16,30 +14,6 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
-}
-
-class EndpointUnavailable extends Error {}
-
-async function request(path, options = {}) {
-  let res;
-  try {
-    res = await fetch(API_BASE_URL + path, {
-      ...options,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${sessionStorage.getItem("access_token") || ""}`,
-      },
-    });
-  } catch {
-    throw new EndpointUnavailable();
-  }
-  if (res.status === 404) throw new EndpointUnavailable();
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const detail = typeof data?.detail === "string" ? data.detail : "Request failed. Please try again.";
-    throw new ApiError(detail, res.status);
-  }
-  return data;
 }
 
 /** Backend room -> the shape the pages use. */
@@ -57,25 +31,6 @@ function fromBackend(room) {
 }
 
 const sameItem = (a, b) => a.trim().toLowerCase().replace(/s$/, "") === b.trim().toLowerCase().replace(/s$/, "");
-
-/** Sample-data version of the backend's filters: capacity, every requested item, and a free slot. */
-function filterSampleRooms({ date, startTime, endTime, minCapacity = 1, equipment = [] }) {
-  return SAMPLE_ROOMS.filter(
-    (room) =>
-      room.capacity >= minCapacity &&
-      equipment.every((item) => room.equipment.some((own) => sameItem(own, item))) &&
-      (!date || !startTime || !endTime || isSampleRoomFree(room.id, date, startTime, endTime))
-  ).sort((a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name));
-}
-
-function isSampleRoomFree(roomId, date, startTime, endTime) {
-  const first = Number(startTime.split(":")[0]);
-  const last = Math.ceil(Number(endTime.split(":")[0]) + Number(endTime.split(":")[1]) / 60) - 1;
-  for (let hour = first; hour <= last; hour++) {
-    if (!SLOT_HOURS.includes(hour) || sampleSlotStatus(roomId, date, hour) !== "available") return false;
-  }
-  return true;
-}
 
 /**
  * @returns {Promise<{rooms: object[], isSample: boolean}>}
@@ -134,8 +89,8 @@ const matching = facilities.filter((room) => {
 
 
 /**
- * @returns {Promise<{interpreted: object|null, rooms: object[], isSample: boolean}>}
- *   interpreted is null when the AI service could not be reached (sample fallback).
+ * @returns {Promise<{interpreted: object, rooms: object[], isSample: boolean}>}
+ *   Throws ApiError with the server's message when the AI search fails.
  */
 
 export async function aiSearchRooms({

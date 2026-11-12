@@ -37,7 +37,6 @@ export default function Dashboard() {
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
 
   const user = JSON.parse(
     sessionStorage.getItem("campus_user") || "null"
@@ -53,23 +52,11 @@ export default function Dashboard() {
 
 
 
+// The dashboard search box was removed in favour of Search Spaces, so every active room is shown.
 const activeFacilities = useMemo(
   () => facilities.filter((facility) => facility.is_active === true),
   [facilities]
 );
-
-const filteredFacilities = useMemo(() => {
-  const query = searchTerm.trim().toLowerCase();
-
-  if (!query) return activeFacilities;
-
-  return activeFacilities.filter((facility) =>
-    [facility.name, ...(facility.equipment || [])]
-      .join(" ")
-      .toLowerCase()
-      .includes(query)
-  );
-}, [activeFacilities, searchTerm]);
 
 
 
@@ -249,17 +236,13 @@ const filteredFacilities = useMemo(() => {
               </div>
             )}
 
-            {!loading && !error && filteredFacilities.length === 0 && (
-              <p className="dashboard-message">
-                {searchTerm
-                  ? "No spaces match your search."
-                  : "No facilities are available yet."}
-              </p>
+            {!loading && !error && activeFacilities.length === 0 && (
+              <p className="dashboard-message">No facilities are available yet.</p>
             )}
 
-            {!loading && !error && filteredFacilities.length > 0 && (
+            {!loading && !error && activeFacilities.length > 0 && (
               <div className="facility-grid">
-                {filteredFacilities.map((facility) => {
+                {activeFacilities.map((facility) => {
                   const imageIndex = Math.max(
                     0,
                     (Number(facility.id) - 1) % facilityImages.length

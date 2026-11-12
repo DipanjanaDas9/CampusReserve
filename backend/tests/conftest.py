@@ -129,5 +129,17 @@ def facility_id(client, admin):
     return response.json()["facility"]["id"]
 
 
+def freeze_clock(monkeypatch, module, when):
+    """Make `module`'s datetime.now() return `when` (a timezone-aware datetime)."""
+    from datetime import datetime, timezone
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return when.astimezone(tz or timezone.utc)
+
+    monkeypatch.setattr(module, "datetime", FrozenDatetime)
+
+
 def slot(start, end, day=FUTURE_DAY, offset="-05:00"):
     return {"start_time": f"{day}T{start}:00{offset}", "end_time": f"{day}T{end}:00{offset}"}
