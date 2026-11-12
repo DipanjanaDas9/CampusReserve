@@ -13,7 +13,7 @@ def _plural(count, word):
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
-def _clock(hhmm):
+def clock_label(hhmm):
     """'14:30' -> '2:30 PM', matching how the app shows times."""
     hour, minute = (int(part) for part in hhmm.split(":")[:2])
     return f"{(hour - 1) % 12 + 1}:{minute:02d} {'AM' if hour < 12 else 'PM'}"
@@ -63,7 +63,7 @@ def score_room(room, requirements):
         reasons.append("Has " + _join(item.strip().lower() for item in equipment))
 
     if requirements.get("start_time") and requirements.get("end_time"):
-        reasons.append(f"Free from {_clock(requirements['start_time'])} to {_clock(requirements['end_time'])}")
+        reasons.append(f"Free from {clock_label(requirements['start_time'])} to {clock_label(requirements['end_time'])}")
 
     return max(score, 0), reasons, tradeoffs
 

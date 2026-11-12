@@ -26,7 +26,7 @@ Set these in the environment or in `backend/.env`. The app runs without them, bu
 | Feature | Settings | Without them |
 | --- | --- | --- |
 | Password reset email | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, optional `SMTP_PORT` (default 587) and `FRONTEND_URL` | No email is sent. The page still shows its usual message, and the failure appears only in the backend log. |
-| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL` | The AI Assistant page reports that AI is not configured. |
+| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) | The AI Assistant page reports that AI is not configured. |
 
 ## Administrator accounts
 
@@ -152,6 +152,14 @@ For example, “Find a study room for 6 people on the third floor of the library
 tomorrow with a projector” leaves start and end times unspecified. The response
 lists missing details and returns no availability results until times are supplied
 in the prompt or Edit controls. Explicit date/time fields override AI extraction.
+Only the date, start time and end time are listed as missing, since they are the
+only details a search needs.
+
+Requests for a room **now**, such as "Which rooms are empty now?", start at the
+next five-minute mark on the campus clock. Without an end time or a length such as
+"for 2 hours", the search covers one hour, and the page says so. A stated length
+also fills in a missing end time for other requests. If Gemini is overloaded, the
+page says the AI service is busy and suggests Search Spaces.
 Building and floor are shown in the interpreted requirements summary.
 
 Results are actual SQLite facilities, filtered by catalog requirements, active

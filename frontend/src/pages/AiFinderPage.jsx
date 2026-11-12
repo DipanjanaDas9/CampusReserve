@@ -225,6 +225,11 @@ function Interpretation({ interpreted: r, times, editing, onEdit, overrides, set
           </div>
         ))}
       </dl>
+      {r.assumptions?.length > 0 && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Note:</span> {r.assumptions.join(". ")}.
+        </p>
+      )}
       {r.missing_information?.length > 0 && (
         <p className="mt-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Add:</span> {r.missing_information.join(", ")}
