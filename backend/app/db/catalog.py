@@ -9,21 +9,26 @@ CATALOG_COLUMNS = {
 }
 
 
+
 def migrate_catalog(connection):
-    """Keep legacy IDs and unknown addresses; never infer catalog identities."""
-    columns = {row["name"] for row in connection.execute("PRAGMA table_info(facilities)")}
+    """Add room catalog fields without changing existing facilities."""
+
     for name, sql_type in CATALOG_COLUMNS.items():
-        if name not in columns:
-            connection.execute(f"ALTER TABLE facilities ADD COLUMN {name} {sql_type}")
-    # NULL identities allow existing facilities to remain unchanged. Known room
-    # identities are unique even when clients vary capitalization or whitespace.
+        connection.execute(
+            f"ALTER TABLE facilities "
+            f"ADD COLUMN IF NOT EXISTS {name} {sql_type}"
+        )
+
     connection.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS facilities_catalog_identity
         ON facilities (
-            lower(trim(building_name)), floor_number, lower(trim(room_number))
+            lower(trim(building_name)),
+            floor_number,
+            lower(trim(room_number))
         )
         WHERE building_name IS NOT NULL
-          AND floor_number IS NOT NULL AND room_number IS NOT NULL
+          AND floor_number IS NOT NULL
+          AND room_number IS NOT NULL
     """)
 
 
@@ -79,11 +84,12 @@ def seed_demo_catalog(connection):
                 (name, building_name, floor_number, room_number, room_type,
                  capacity, equipment, location, opening_time, closing_time,
                  restrictions, is_active)
-            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             WHERE NOT EXISTS (
                 SELECT 1 FROM facilities
-                WHERE lower(trim(building_name)) = lower(?)
-                  AND floor_number = ? AND lower(trim(room_number)) = lower(?)
+                WHERE lower(trim(building_name)) = lower(%s)
+                    AND floor_number = %s
+                    AND lower(trim(room_number)) = lower(%s)
             )
         """, (
             f"{room['building_name']} {room['room_number']}",

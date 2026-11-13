@@ -74,7 +74,10 @@ def test_invalid_times_are_rejected(client, student, facility_id, times, status)
 def test_facility_without_opening_hours_cannot_be_booked(client, student, facility_id):
     # The API now requires hours, but rows created before that rule can still lack them.
     with closing(db_connection.get_connection()) as connection:
-        connection.execute("UPDATE facilities SET opening_time = NULL, closing_time = NULL WHERE id = ?", (facility_id,))
+        connection.execute(
+            "UPDATE facilities SET opening_time = NULL, closing_time = NULL WHERE id = %s",
+            (facility_id,),
+        )
         connection.commit()
 
     assert book(client, student, facility_id).status_code == 409

@@ -1,7 +1,7 @@
 
 from contextlib import closing
 import re
-import sqlite3
+from psycopg.errors import UniqueViolation
 
 from fastapi import APIRouter, Depends, HTTPException
 from email.headerregistry import Address
@@ -48,19 +48,22 @@ def register_user(user: RegisterRequest):
 
     password_hash = hash_password(user.password)
 
+
     try:
         with closing(get_connection()) as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO users (name, email, password_hash)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
+                RETURNING id
                 """,
                 (name, email, password_hash),
             )
-            connection.commit()
-            user_id = cursor.lastrowid
 
-    except sqlite3.IntegrityError:
+            user_id = cursor.fetchone()["id"]
+            connection.commit()
+
+    except UniqueViolation:
         raise HTTPException(
             status_code=409,
             detail="An account with this email already exists.",
@@ -85,7 +88,7 @@ def login(request: LoginRequest):
             """
             SELECT id, name, email, role, password_hash, session_version
             FROM users
-            WHERE email = ?
+            WHERE email = %s
             """,
             (email,),
         ).fetchone()
@@ -191,7 +194,7 @@ def forgot_password(request: ForgotPasswordRequest):
 
     with closing(get_connection()) as connection:
         user = connection.execute(
-            "SELECT id FROM users WHERE email = ?",
+            "SELECT id FROM users WHERE email = %s",
             (email,),
         ).fetchone()
 
@@ -204,7 +207,7 @@ def forgot_password(request: ForgotPasswordRequest):
             """
             SELECT created_at
             FROM password_reset_tokens
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY created_at DESC
             LIMIT 1
             """,
@@ -228,8 +231,8 @@ def forgot_password(request: ForgotPasswordRequest):
         connection.execute(
             """
             UPDATE password_reset_tokens
-            SET used_at = ?
-            WHERE user_id = ? AND used_at IS NULL
+            SET used_at = %s
+            WHERE user_id = %s AND used_at IS NULL
             """,
             (now.isoformat(), user["id"]),
         )
@@ -238,7 +241,7 @@ def forgot_password(request: ForgotPasswordRequest):
             """
             INSERT INTO password_reset_tokens
             (user_id, token_hash, expires_at, created_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 user["id"],
@@ -277,13 +280,14 @@ def reset_password(request: ResetPasswordRequest):
     with closing(get_connection()) as connection:
         # Lock the database transaction so the same
         # reset token cannot be used simultaneously.
-        connection.execute("BEGIN IMMEDIATE")
+
 
         reset_record = connection.execute(
             """
             SELECT id, user_id, expires_at, used_at
             FROM password_reset_tokens
-            WHERE token_hash = ?
+            WHERE token_hash = %s
+            FOR UPDATE
             """,
             (token_hash,),
         ).fetchone()
@@ -322,9 +326,9 @@ def reset_password(request: ResetPasswordRequest):
         updated = connection.execute(
             """
             UPDATE users
-            SET password_hash = ?,
+            SET password_hash = %s,
                 session_version = session_version + 1
-            WHERE id = ?
+            WHERE id = %s
             """,
             (
                 new_password_hash,
@@ -343,8 +347,8 @@ def reset_password(request: ResetPasswordRequest):
         connection.execute(
             """
             UPDATE password_reset_tokens
-            SET used_at = ?
-            WHERE id = ?
+            SET used_at = %s
+            WHERE id = %s
             """,
             (
                 now.isoformat(),
@@ -356,8 +360,8 @@ def reset_password(request: ResetPasswordRequest):
         connection.execute(
             """
             UPDATE password_reset_tokens
-            SET used_at = ?
-            WHERE user_id = ?
+            SET used_at = %s
+            WHERE user_id = %s
               AND used_at IS NULL
             """,
             (
@@ -391,7 +395,7 @@ def validate_reset_token(request: ValidateResetTokenRequest):
             """
             SELECT expires_at, used_at
             FROM password_reset_tokens
-            WHERE token_hash = ?
+            WHERE token_hash = %s
             """,
             (token_hash,),
         ).fetchone()

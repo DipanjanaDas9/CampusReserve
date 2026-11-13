@@ -1,5 +1,5 @@
 import json
-import sqlite3
+from psycopg.errors import UniqueViolation
 import logging
 from typing import Annotated
 from contextlib import closing
@@ -71,19 +71,19 @@ def get_facilities(
     if building_name is not None:
         if not building_name.strip():
             raise HTTPException(status_code=422, detail="Building name must not be blank")
-        conditions.append("lower(trim(building_name)) = lower(?)")
+        conditions.append("lower(trim(building_name)) = lower(%s)")
         parameters.append(building_name.strip())
     if floor_number is not None:
-        conditions.append("floor_number = ?")
+        conditions.append("floor_number = %s")
         parameters.append(floor_number)
     if min_capacity is not None:
-        conditions.append("capacity >= ?")
+        conditions.append("capacity >= %s")
         parameters.append(min_capacity)
     if max_capacity is not None:
-        conditions.append("capacity <= ?")
+        conditions.append("capacity <= %s")
         parameters.append(max_capacity)
     if is_active is not None:
-        conditions.append("is_active = ?")
+        conditions.append("is_active = %s")
         parameters.append(int(is_active))
     required = {normalize_equipment(item) for item in equipment or []}
     if "" in required:
@@ -102,7 +102,7 @@ def get_facilities(
 def get_facility(facility_id: int):
     with closing(get_connection()) as connection:
         facility = connection.execute(
-            "SELECT * FROM facilities WHERE id = ?",
+            "SELECT * FROM facilities WHERE id = %s",
             (facility_id,),
         ).fetchone()
 
@@ -116,7 +116,7 @@ def get_facility(facility_id: int):
 
 
 def catalog_conflict(exc):
-    if "UNIQUE constraint failed" in str(exc):
+    if exc.diag.constraint_name == "facilities_catalog_identity":
         raise HTTPException(
             status_code=409,
             detail="A facility already exists with this building, floor, and room number",
@@ -144,15 +144,21 @@ def create_facility(
                 """
                 INSERT INTO facilities
                     (name, capacity, equipment, location, opening_time,
-                     closing_time, restrictions, building_name, floor_number,
-                     room_number, room_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, facility_values(facility),
+                    closing_time, restrictions, building_name, floor_number,
+                    room_number, room_type)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                facility_values(facility),
             )
+
+            facility_id = cursor.fetchone()["id"]
+
             result = connection.execute(
-                "SELECT * FROM facilities WHERE id = ?", (cursor.lastrowid,)
+                "SELECT * FROM facilities WHERE id = %s",
+                (facility_id,),
             ).fetchone()
-    except sqlite3.IntegrityError as exc:
+    except UniqueViolation as exc:
         catalog_conflict(exc)
     return {"message": "Facility created successfully", "facility": facility_to_dict(result)}
 
@@ -165,9 +171,8 @@ def update_facility(
 ):
     try:
         with closing(get_connection()) as connection, connection:
-            connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
-                "SELECT * FROM facilities WHERE id = ?", (facility_id,)
+                "SELECT * FROM facilities WHERE id = %s FOR UPDATE", (facility_id,)
             ).fetchone()
             if existing is None:
                 raise HTTPException(status_code=404, detail="Facility not found")
@@ -180,17 +185,17 @@ def update_facility(
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
             connection.execute(
                 """
-                UPDATE facilities SET name = ?, capacity = ?, equipment = ?,
-                    location = ?, opening_time = ?, closing_time = ?,
-                    restrictions = ?, building_name = ?, floor_number = ?,
-                    room_number = ?, room_type = ? WHERE id = ?
+                UPDATE facilities SET name = %s, capacity = %s, equipment = %s,
+                    location = %s, opening_time = %s, closing_time = %s,
+                    restrictions = %s, building_name = %s, floor_number = %s,
+                    room_number = %s, room_type = %s WHERE id = %s
                 """, (*facility_values(merged), facility_id),
             )
             result = connection.execute(
-                "SELECT * FROM facilities WHERE id = ?", (facility_id,)
+                "SELECT * FROM facilities WHERE id = %s", (facility_id,)
             ).fetchone()
-    except sqlite3.IntegrityError as exc:
-        catalog_conflict(exc)
+    except UniqueViolation as exc:
+            catalog_conflict(exc)
     return {"message": "Facility updated successfully", "facility": facility_to_dict(result)}
 
 
@@ -202,20 +207,15 @@ def update_facility_status(
 ):
     with closing(get_connection()) as connection:
         try:
-            connection.execute("BEGIN IMMEDIATE")
 
             cursor = connection.execute(
                 """
                 UPDATE facilities
-                SET is_active = ?
-                WHERE id = ?
+                SET is_active = %s
+                WHERE id = %s
                 """,
-                (
-                    1 if status.is_active else 0,
-                    facility_id,
-                ),
+                (int(status.is_active), facility_id),
             )
-
             if cursor.rowcount == 0:
                 raise HTTPException(
                     status_code=404,
@@ -223,7 +223,7 @@ def update_facility_status(
                 )
 
             facility = connection.execute(
-                "SELECT * FROM facilities WHERE id = ?",
+                "SELECT * FROM facilities WHERE id = %s",
                 (facility_id,),
             ).fetchone()
 
@@ -251,13 +251,13 @@ def delete_facility(
 ):
     with closing(get_connection()) as connection:
         try:
-            connection.execute("BEGIN IMMEDIATE")
 
             facility = connection.execute(
                 """
                 SELECT id, name
                 FROM facilities
-                WHERE id = ?
+                WHERE id = %s
+                FOR UPDATE
                 """,
                 (facility_id,)
             ).fetchone()
@@ -270,12 +270,12 @@ def delete_facility(
 
             reservation_count = connection.execute(
                 """
-                SELECT COUNT(*)
+                SELECT COUNT(*) AS total
                 FROM reservations
-                WHERE facility_id = ?
+                WHERE facility_id = %s
                 """,
-                (facility_id,)
-            ).fetchone()[0]
+                (facility_id,),
+            ).fetchone()["total"]
 
             if reservation_count > 0:
                 raise HTTPException(
@@ -289,7 +289,7 @@ def delete_facility(
             connection.execute(
                 """
                 DELETE FROM facilities
-                WHERE id = ?
+                WHERE id = %s
                 """,
                 (facility_id,)
             )

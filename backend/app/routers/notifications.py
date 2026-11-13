@@ -28,7 +28,7 @@ def get_my_notifications(
                 is_read,
                 created_at
             FROM notifications
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY created_at DESC, id DESC
             """,
             (current_user["id"],)
@@ -52,7 +52,7 @@ def mark_all_notifications_read(
             """
             UPDATE notifications
             SET is_read = 1
-            WHERE user_id = ?
+            WHERE user_id = %s
               AND is_read = 0
             """,
             (current_user["id"],)
@@ -77,7 +77,7 @@ def mark_notification_read(
             """
             SELECT id
             FROM notifications
-            WHERE id = ? AND user_id = ?
+            WHERE id = %s AND user_id = %s
             """,
             (notification_id, current_user["id"])
         ).fetchone()
@@ -92,7 +92,7 @@ def mark_notification_read(
             """
             UPDATE notifications
             SET is_read = 1
-            WHERE id = ? AND user_id = ?
+            WHERE id = %s AND user_id = %s
             """,
             (notification_id, current_user["id"])
         )

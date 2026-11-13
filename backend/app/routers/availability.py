@@ -52,7 +52,7 @@ def check_availability(
             """
             SELECT id, name, capacity, opening_time, closing_time, is_active
             FROM facilities
-            WHERE id = ?
+            WHERE id = %s
             """,
             (facility_id,),
         ).fetchone()
@@ -97,10 +97,10 @@ def check_availability(
         conflict = connection.execute(
             """
             SELECT id FROM reservations
-            WHERE facility_id = ?
+            WHERE facility_id = %s
               AND status IN ('pending', 'approved')
-              AND start_time < ?
-              AND end_time > ?
+              AND start_time < %s
+              AND end_time > %s
             LIMIT 1
             """,
             (

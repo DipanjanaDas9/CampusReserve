@@ -1,8 +1,9 @@
 """Catalog migration and API regression tests; all databases are temporary."""
-import sqlite3
 from contextlib import closing
 
 import pytest
+
+from psycopg.errors import UniqueViolation
 
 from app.db import connection as db
 from app.db.catalog import DEMO_ROOMS
@@ -13,50 +14,92 @@ from test_facilities import ROOM
 ADDRESS = {"building_name": "Campus Library", "floor_number": 0, "room_number": "G01", "room_type": "Study room"}
 
 
-def test_old_schema_migrates_without_changing_rows_or_foreign_keys(tmp_path, monkeypatch):
-    path = tmp_path / "legacy.db"
-    monkeypatch.setattr(db, "DATABASE_PATH", path)
-    with sqlite3.connect(path) as connection:
-        connection.executescript("""
-            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-            CREATE TABLE facilities (id INTEGER PRIMARY KEY, name TEXT NOT NULL,
-                capacity INTEGER NOT NULL, equipment TEXT DEFAULT '[]', location TEXT,
-                opening_time TEXT, closing_time TEXT, restrictions TEXT);
-            CREATE TABLE reservations (id INTEGER PRIMARY KEY, user_id INTEGER,
-                facility_id INTEGER REFERENCES facilities(id), start_time TEXT,
-                end_time TEXT, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-            INSERT INTO users VALUES (7, 'Existing user', 'existing@example.edu', 'unchanged', '2026-01-01');
-            INSERT INTO facilities VALUES (42, 'Legacy room', 8, '["Monitor"]', 'Original location', '08:00', '20:00', 'Original rules');
-            INSERT INTO reservations VALUES (19, 7, 42, '2099-01-01T14:00:00+00:00', '2099-01-01T15:00:00+00:00', 'approved', '2026-01-01');
-        """)
-        original = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in ("users", "facilities", "reservations")}
+
+def test_existing_schema_initialization_preserves_rows_and_foreign_keys():
+    """Reinitialization must preserve existing records and relationships."""
+
+    initialize_database()
+
+    with db.get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO users (id, name, email, password_hash)
+            VALUES (7, 'Existing user', 'existing@example.edu', 'unchanged')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO facilities
+                (id, name, capacity, equipment, location,
+                 opening_time, closing_time, restrictions)
+            VALUES
+                (42, 'Legacy room', 8, '["Monitor"]',
+                 'Original location', '08:00', '20:00',
+                 'Original rules')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO reservations
+                (id, user_id, facility_id, start_time, end_time, status)
+            VALUES
+                (19, 7, 42,
+                 '2099-01-01T14:00:00+00:00',
+                 '2099-01-01T15:00:00+00:00',
+                 'approved')
+            """
+        )
+
+    tables = ("users", "facilities", "reservations")
+
+    with db.get_connection() as connection:
+        original = {
+            table: connection.execute(
+                f"SELECT * FROM {table} ORDER BY id"
+            ).fetchall()
+            for table in tables
+        }
+
     initialize_database()
     initialize_database()
-    with closing(db.get_connection()) as connection:
+
+    with db.get_connection() as connection:
         for table, rows in original.items():
-            migrated = connection.execute(f"SELECT * FROM {table}").fetchall()
-            assert [tuple(row)[:len(rows[0])] for row in migrated] == rows
-        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-        assert connection.execute("SELECT building_name FROM facilities WHERE id=42").fetchone()[0] is None
+            migrated = connection.execute(
+                f"SELECT * FROM {table} ORDER BY id"
+            ).fetchall()
+
+            assert migrated == rows
+
+        assert connection.execute(
+            "SELECT building_name FROM facilities WHERE id = 42"
+        ).fetchone()["building_name"] is None
+
+        assert connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM reservations r
+            LEFT JOIN users u ON u.id = r.user_id
+            LEFT JOIN facilities f ON f.id = r.facility_id
+            WHERE u.id IS NULL OR f.id IS NULL
+            """
+        ).fetchone()["total"] == 0
 
 
 def test_seed_is_opt_in_repeat_safe_and_preserves_admin_edits(monkeypatch):
     with closing(db.get_connection()) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM facilities").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) AS total FROM facilities").fetchone()["total"] == 0
     assert seed_demo() == len(DEMO_ROOMS)
     with closing(db.get_connection()) as connection, connection:
         first = connection.execute("SELECT * FROM facilities ORDER BY id LIMIT 1").fetchone()
-        connection.execute("UPDATE facilities SET capacity=99, is_active=0 WHERE id=?", (first["id"],))
+        connection.execute("UPDATE facilities SET capacity=99, is_active=0 WHERE id=%s", (first["id"],))
     assert seed_demo() == 0
     with closing(db.get_connection()) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM facilities").fetchone()[0] == len(DEMO_ROOMS)
-        room = connection.execute("SELECT * FROM facilities WHERE id=?", (first["id"],)).fetchone()
+        assert connection.execute("SELECT COUNT(*) AS total FROM facilities").fetchone()["total"] == len(DEMO_ROOMS)
+        room = connection.execute("SELECT * FROM facilities WHERE id=%s", (first["id"],)).fetchone()
         assert room["capacity"] == 99 and room["is_active"] == 0
-        assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == 0
-
+        assert connection.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"] == 0
+        assert connection.execute("SELECT COUNT(*) AS total FROM reservations").fetchone()["total"] == 0
 
 def test_catalog_roundtrip_and_legacy_update(client, admin):
     created = client.post("/facilities", headers=admin, json={**ROOM, **ADDRESS})
@@ -76,9 +119,13 @@ def test_identity_unique_on_create_update_and_direct_sql(client, admin):
     second = client.post("/facilities", headers=admin, json={**ROOM, **ADDRESS, "room_number": "G02"}).json()["facility"]
     assert client.put(f"/facilities/{second['id']}", headers=admin, json=duplicate).status_code == 409
     assert client.get(f"/facilities/{second['id']}").json()["room_number"] == "G02"
+
     with closing(db.get_connection()) as connection:
-        with pytest.raises(sqlite3.IntegrityError):
-            connection.execute("UPDATE facilities SET room_number='g01' WHERE id=?", (second["id"],))
+        with pytest.raises(UniqueViolation):
+            connection.execute(
+                "UPDATE facilities SET room_number = 'g01' WHERE id = %s",
+                (second["id"],),
+            )
     assert first["id"] != second["id"]
 
 
@@ -112,24 +159,43 @@ def test_seed_preserves_existing_bookings_notifications_and_reset_tokens(client,
     })
     assert booked.status_code == 201
     with closing(db.get_connection()) as connection, connection:
-        user_id = connection.execute("SELECT id FROM users WHERE email='student@example.edu'").fetchone()[0]
+        user_id = connection.execute("SELECT id FROM users WHERE email='student@example.edu'").fetchone()["id"]
         connection.execute("""INSERT INTO password_reset_tokens
-            (user_id, token_hash, expires_at, created_at) VALUES (?, 'hashed-token', '2099-01-01', '2026-01-01')""", (user_id,))
+            (user_id, token_hash, expires_at, created_at) VALUES (%s, 'hashed-token', '2099-01-01', '2026-01-01')""", (user_id,))
         tables = ["users", "facilities", "reservations", "notifications", "password_reset_tokens"]
-        before = {table: [tuple(row) for row in connection.execute(f"SELECT * FROM {table} ORDER BY id")] for table in tables}
+        before = {
+            table: [
+                dict(row)
+                for row in connection.execute(f"SELECT * FROM {table} ORDER BY id")
+            ]
+            for table in tables
+        }
     seed_demo()
     with closing(db.get_connection()) as connection:
         for table, rows in before.items():
-            after = [tuple(row) for row in connection.execute(f"SELECT * FROM {table} ORDER BY id")]
+            after = [
+                dict(row)
+                for row in connection.execute(f"SELECT * FROM {table} ORDER BY id")
+            ]
             assert all(row in after for row in rows)
-        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM reservations r
+            LEFT JOIN users u ON u.id = r.user_id
+            LEFT JOIN facilities f ON f.id = r.facility_id
+            WHERE u.id IS NULL OR f.id IS NULL
+            """
+        ).fetchone()["total"] == 0
 
 
 def test_startup_never_seeds_even_with_old_environment_setting(monkeypatch):
     monkeypatch.setenv("CAMPUSRESERVE_SEED_DEMO", "1")
     initialize_database()
     with closing(db.get_connection()) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM facilities").fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) AS total FROM facilities"
+        ).fetchone()["total"] == 0
 
 
 def test_demo_dataset_shape():
@@ -150,7 +216,7 @@ def test_demo_cli_requires_explicit_flag():
         main([])
     assert error.value.code == 2
     with closing(db.get_connection()) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM facilities").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) AS total FROM facilities").fetchone()["total"] == 0
 
 
 def test_demo_cli_runs_twice_without_duplicates(capsys):

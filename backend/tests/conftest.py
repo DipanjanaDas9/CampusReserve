@@ -1,12 +1,10 @@
-"""Test setup: a signing key, an isolated SQLite file per test, and helper clients.
+"""PostgreSQL test setup with isolated Neon database and helper clients.
 
-Run from the backend folder:  python -m pytest
+Run from the backend folder: python -m pytest
 """
 
 import os
 import sys
-import tempfile
-from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -17,11 +15,35 @@ os.environ.setdefault("CAMPUSRESERVE_SECRET_KEY", "test-secret-key-that-is-at-le
 
 os.environ["CAMPUSRESERVE_SEED_DEMO"] = "0"
 
-# Point the database at a temporary file before main.py is imported:
-# importing it runs initialize_database() against DATABASE_PATH.
-from app.db import connection as db_connection  # noqa: E402
+# Configure the isolated PostgreSQL test database before importing main.
+from dotenv import load_dotenv
 
-db_connection.DATABASE_PATH = Path(tempfile.mkdtemp(prefix="campusreserve-tests-")) / "import.db"
+load_dotenv(BACKEND / ".env")
+
+development_url = os.getenv("DATABASE_URL")
+test_url = os.getenv("TEST_DATABASE_URL")
+
+if not development_url or not test_url:
+    raise RuntimeError(
+        "Both DATABASE_URL and TEST_DATABASE_URL must be configured."
+    )
+
+if development_url == test_url:
+    raise RuntimeError(
+        "Refusing to run tests against the development database."
+    )
+
+from urllib.parse import urlparse
+
+if urlparse(development_url).hostname == urlparse(test_url).hostname:
+    raise RuntimeError(
+        "Development and test database hosts must differ."
+    )
+
+# Configure the test database BEFORE importing main.py.
+os.environ["DATABASE_URL"] = test_url
+
+from app.db import connection as db_connection  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -32,10 +54,21 @@ FUTURE_DAY = "2099-06-10"  # a Wednesday; America/Chicago is UTC-05:00 in June
 
 
 @pytest.fixture(autouse=True)
-def fresh_database(tmp_path, monkeypatch):
-    monkeypatch.setattr(db_connection, "DATABASE_PATH", tmp_path / "test.db")
+def fresh_database():
     initialize_database()
 
+    with db_connection.get_connection() as connection:
+        connection.execute(
+            """
+            TRUNCATE TABLE
+                notifications,
+                password_reset_tokens,
+                reservations,
+                facilities,
+                users
+            RESTART IDENTITY CASCADE
+            """
+        )
 
 @pytest.fixture
 def client():
@@ -53,9 +86,11 @@ def login_headers(client, email, password="password-123"):
 
 
 def promote_to_admin(email):
-    with closing(db_connection.get_connection()) as connection:
-        connection.execute("UPDATE users SET role = 'admin' WHERE email = ?", (email,))
-        connection.commit()
+    with db_connection.get_connection() as connection:
+        connection.execute(
+            "UPDATE users SET role = 'admin' WHERE email = %s",
+            (email,),
+        )
 
 
 @pytest.fixture

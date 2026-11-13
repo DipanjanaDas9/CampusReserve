@@ -33,7 +33,7 @@ def get_current_user(
 
     with closing(get_connection()) as connection:
         user = connection.execute(
-            "SELECT id, name, email, role, session_version FROM users WHERE id = ?",
+            "SELECT id, name, email, role, session_version FROM users WHERE id = %s",
             (user_id,),
         ).fetchone()
 

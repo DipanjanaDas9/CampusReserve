@@ -36,7 +36,7 @@ def get_my_reservations(
 
             FROM reservations r
             JOIN facilities f ON r.facility_id = f.id
-            WHERE r.user_id = ?
+            WHERE r.user_id = %s
             ORDER BY r.start_time DESC
             """,
             (current_user["id"],)
@@ -83,16 +83,15 @@ def create_reservation(
         try:
             # Lock before checking availability to avoid
             # simultaneous requests booking the same room.
-            connection.execute("BEGIN IMMEDIATE")
-
             facility = connection.execute(
-                """
-                SELECT id, name, capacity, opening_time, closing_time, is_active
-                FROM facilities
-                WHERE id = ?
-                """,
-                (reservation.facility_id,)
-            ).fetchone()
+            """
+            SELECT id, name, capacity, opening_time, closing_time, is_active
+            FROM facilities
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (reservation.facility_id,)
+        ).fetchone()
 
             if facility is None:
                 raise HTTPException(
@@ -120,10 +119,10 @@ def create_reservation(
             conflict = connection.execute(
                 """
                 SELECT id FROM reservations
-                WHERE facility_id = ?
+                WHERE facility_id = %s
                   AND status IN ('pending', 'approved')
-                  AND start_time < ?
-                  AND end_time > ?
+                  AND start_time < %s
+                  AND end_time > %s
                 LIMIT 1
                 """,
                 (
@@ -142,8 +141,10 @@ def create_reservation(
             cursor = connection.execute(
                 """
                 INSERT INTO reservations
-                (user_id, facility_id, start_time, end_time,attendees, purpose, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (user_id, facility_id, start_time, end_time,
+                    attendees, purpose, notes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     current_user["id"],
@@ -153,17 +154,18 @@ def create_reservation(
                     reservation.attendees,
                     reservation.purpose.strip(),
                     reservation.notes,
-                )
+                ),
             )
 
-            
-            reservation_id = cursor.lastrowid
+            reservation_id = cursor.fetchone()["id"]
 
             connection.execute(
                 """
                 INSERT INTO notifications
                     (user_id, reservation_id, kind, title, body)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+
                 """,
                 (
                     current_user["id"],
@@ -181,10 +183,10 @@ def create_reservation(
                 INSERT INTO notifications
                     (user_id, reservation_id, kind, title, body)
                 SELECT
-                    id, ?, 'system', ?, ?
+                    id, %s, 'system', %s, %s
                 FROM users
                 WHERE role = 'admin'
-                AND id != ?
+                AND id != %s
                 """,
                 (
                     reservation_id,
@@ -227,7 +229,6 @@ def cancel_reservation(
 ):
     with closing(get_connection()) as connection:
         try:
-            connection.execute("BEGIN IMMEDIATE")
 
             reservation = connection.execute(
                 """
@@ -238,7 +239,8 @@ def cancel_reservation(
                     f.name AS facility_name
                 FROM reservations r
                 JOIN facilities f ON r.facility_id = f.id
-                WHERE r.id = ?
+                WHERE r.id = %s
+                FOR UPDATE
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -268,7 +270,7 @@ def cancel_reservation(
                 """
                 UPDATE reservations
                 SET status = 'cancelled'
-                WHERE id = ?
+                WHERE id = %s
                 """,
                 (reservation_id,)
             )
@@ -277,7 +279,7 @@ def cancel_reservation(
                 """
                 INSERT INTO notifications
                     (user_id, reservation_id, kind, title, body)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     current_user["id"],
@@ -296,10 +298,10 @@ def cancel_reservation(
                 INSERT INTO notifications
                     (user_id, reservation_id, kind, title, body)
                 SELECT
-                    id, ?, 'cancelled', ?, ?
+                    id, %s, 'cancelled', %s, %s
                 FROM users
                 WHERE role = 'admin'
-                AND id != ?
+                AND id != %s
                 """,
                 (
                     reservation_id,
@@ -334,14 +336,14 @@ def check_in_reservation(
 
     with closing(get_connection()) as connection:
         try:
-            connection.execute("BEGIN IMMEDIATE")
 
             reservation = connection.execute(
                 """
                 SELECT id, user_id, status,
                        start_time, end_time, checked_in_at
                 FROM reservations
-                WHERE id = ?
+                WHERE id = %s
+                FOR UPDATE
                 """,
                 (reservation_id,)
             ).fetchone()
@@ -385,8 +387,8 @@ def check_in_reservation(
             connection.execute(
                 """
                 UPDATE reservations
-                SET checked_in_at = ?
-                WHERE id = ?
+                SET checked_in_at = %s
+                WHERE id = %s
                 """,
                 (checked_in_at, reservation_id)
             )
