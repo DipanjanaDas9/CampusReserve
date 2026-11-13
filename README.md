@@ -70,7 +70,10 @@ fields remain null. Assign building, floor, and room together when cataloging a
 legacy room. Room type can be set independently. Older API payloads remain valid,
 and updates that omit catalog fields preserve stored catalog values.
 
-For **development/demo only**, run the explicit seed command from `backend`:
+The bundled fictional room catalog is added automatically when the API starts.
+Each local or deployed database gets the rooms on first startup; repeated
+startups skip existing catalog addresses and preserve room edits. The explicit
+seed command can also be used from `backend`:
 
 ```bash
 python scripts/seed_demo.py --demo
@@ -107,11 +110,10 @@ Each room includes maximum capacity, equipment, operating hours, optional
 restrictions, and active status. Two rooms are inactive to demonstrate that state.
 Seeded facilities are identified as fictional demo data in restrictions.
 
-**Server startup never seeds data**, including when the old
-`CAMPUSRESERVE_SEED_DEMO` setting is present. Do not run the demo command against
-production. Repeated runs skip existing catalog addresses and preserve all
-existing IDs, fields, reservations, users, and notifications. Earlier demo records
-are preserved too; they are not renamed or removed, so a database that already
+The catalog contains fictional demo data, not verified campus room information.
+Repeated seed runs skip existing catalog addresses and preserve all existing
+IDs, fields, reservations, users, and notifications. Earlier demo records are
+preserved too; they are not renamed or removed, so a database that already
 contains rooms can have more than 30 total facilities. The command prints the
 number actually added. Explicitly rerunning it will reinsert deleted demo
 addresses but never reset edits to existing rooms.
