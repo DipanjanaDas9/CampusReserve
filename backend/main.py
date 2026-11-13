@@ -1,4 +1,4 @@
-
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,20 +15,29 @@ from app.routers.ai import router as ai_router
 app = FastAPI(title="Campus Reservation API")
 
 # Allow the React frontend to communicate with FastAPI
+
+# Allow local development and the deployed React frontend.
+frontend_url = os.getenv("FRONTEND_URL", "").rstrip("/")
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize the configured database and make bundled rooms available.
+# Initialize PostgreSQL tables and seed the default room catalog.
 initialize_database()
 seed_default_catalog()
 
