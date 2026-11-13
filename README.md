@@ -2,7 +2,7 @@
 
 ## Running locally
 
-Backend (FastAPI, SQLite). The server will not start without a signing key of at least 32 characters:
+Backend (FastAPI, PostgreSQL). The server will not start without a signing key of at least 32 characters:
 
 ```bash
 cd backend
@@ -26,7 +26,7 @@ Set these in the environment or in `backend/.env`. The app runs without them, bu
 | Feature | Settings | Without them |
 | --- | --- | --- |
 | Password reset email | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, optional `SMTP_PORT` (default 587) and `FRONTEND_URL` | No email is sent. The page still shows its usual message, and the failure appears only in the backend log. |
-| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL` | The AI Assistant page reports that AI is not configured. |
+| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL`
 
 ## Administrator accounts
 
@@ -47,8 +47,6 @@ cd backend
 pip install -r requirements-dev.txt
 python -m pytest
 ```
-
-Each test uses its own temporary SQLite database, so your local `campusreserve.db` is never touched.
 
 ## Campus room catalog and development data
 
@@ -96,8 +94,7 @@ or demo environment; do not run it against production. Keep the passwords in
 your local environment or an untracked local `.env` file, never in source
 control. Existing demo users are not modified when the command is rerun.
 
-This uses the existing SQLite configuration and inserts **30 fictional university
-rooms, not verified UTA room information**:
+**30 fictional university rooms, are added**:
 
 | Building | Rooms | Catalog |
 | --- | ---: | --- |
@@ -108,19 +105,6 @@ rooms, not verified UTA room information**:
 
 Each room includes maximum capacity, equipment, operating hours, optional
 restrictions, and active status. Two rooms are inactive to demonstrate that state.
-Seeded facilities are identified as fictional demo data in restrictions.
-
-The catalog contains fictional demo data, not verified campus room information.
-Repeated seed runs skip existing catalog addresses and preserve all existing
-IDs, fields, reservations, users, and notifications. Earlier demo records are
-preserved too; they are not renamed or removed, so a database that already
-contains rooms can have more than 30 total facilities. The command prints the
-number actually added. Explicitly rerunning it will reinsert deleted demo
-addresses but never reset edits to existing rooms.
-
-No table is dropped or rebuilt. Normal startup migrates the configured local
-SQLite database in place; take a SQLite backup before applying migrations to
-important data. Tests migrate and seed temporary databases only.
 
 ### Facility API filters
 
@@ -156,9 +140,8 @@ lists missing details and returns no availability results until times are suppli
 in the prompt or Edit controls. Explicit date/time fields override AI extraction.
 Building and floor are shown in the interpreted requirements summary.
 
-Results are actual SQLite facilities, filtered by catalog requirements, active
+Results are actual facilities, filtered by catalog requirements, active
 status, maximum capacity, and every requested equipment item. Each candidate must
 pass the same time-window and booking-conflict checks as manual availability.
 Manual Search Spaces remains independent of Gemini and works without an API key.
-AI tests mock the Gemini response; a live Gemini request requires configured
-credentials and quota.
+
