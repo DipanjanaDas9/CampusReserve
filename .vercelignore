@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python virtual environments
+.venv/
+venv/
+**/.venv/
+**/venv/
+
+# Python caches and tests
+**/__pycache__/
+**/.pytest_cache/
+**/tests/
+
+# Frontend build artifacts and dependencies
+**/node_modules/
+**/dist/
+
+# Local databases
+*.db
+*.db-*
+
+# Git metadata
+.git/
