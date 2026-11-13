@@ -176,10 +176,6 @@ export async function getAvailability(facilityId, weekStart) {
 }
 
 
-export function sampleSlotStatus(spaceId, isoDate, hour) {
-  return "available";
-}
-
 
 export async function checkRoomAvailability(
   facilityId,

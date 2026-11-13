@@ -79,7 +79,8 @@ async function reservationRequest(path, options = {}) {
     }
 
     throw new Error(
-      "Cannot connect to the reservation server."
+      "Cannot connect to the reservation server.",
+      { cause: error }
     );
   }
 

@@ -87,9 +87,7 @@ useEffect(() => {
 
     let cancelled = false;
 
-    setData(null);
-    setError(null);
-
+    // The room picker and week buttons clear the old data before changing these values.
     getAvailability(spaceId, weekStart)
       .then((result) => {
         if (!cancelled) {

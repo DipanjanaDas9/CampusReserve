@@ -6,7 +6,6 @@ import { StudentLayout } from "../layouts/StudentLayout";
 import { aiSearchRooms } from "../api/rooms";
 import { RoomCard, SortSelect } from "../components/RoomCard";
 import { sortRooms } from "../lib/rooms";
-import { SampleDataLabel } from "../components/SampleDataLabel";
 import { StatusMessage } from "../components/StatusMessage";
 import { formatDate, formatDuration, formatTimeRange, relativeDay, todayISO } from "../lib/datetime";
 
@@ -25,10 +24,10 @@ export function AiFinderPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState(null); // { interpreted, rooms, isSample, times }
+  const [result, setResult] = useState(null); // { interpreted, rooms, times }
   const [editing, setEditing] = useState(false);
   const [overrides, setOverrides] = useState({ date: "", startTime: "", endTime: "" });
-  const [sortBy, setSortBy] = useState("capacity");
+  const [sortBy, setSortBy] = useState("match");
 
   async function runSearch(extra = {}) {
     setError("");
@@ -125,22 +124,16 @@ export function AiFinderPage() {
 
         {result && !loading && (
           <>
-            {result.interpreted ? (
-              <Interpretation
-                interpreted={result.interpreted}
-                times={result.times}
-                editing={editing}
-                onEdit={() => setEditing((v) => !v)}
-                overrides={overrides}
-                setOverrides={setOverrides}
-                onSearchAgain={onSearchAgain}
-                loading={loading}
-              />
-            ) : (
-              <StatusMessage className="mt-4">
-                The AI search service isn't available on this server yet, so your request could not be interpreted. Showing sample rooms instead.
-              </StatusMessage>
-            )}
+            <Interpretation
+              interpreted={result.interpreted}
+              times={result.times}
+              editing={editing}
+              onEdit={() => setEditing((v) => !v)}
+              overrides={overrides}
+              setOverrides={setOverrides}
+              onSearchAgain={onSearchAgain}
+              loading={loading}
+            />
 
             <section className="mt-6" aria-labelledby="recommended-heading" aria-live="polite">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -148,9 +141,8 @@ export function AiFinderPage() {
                   <h2 id="recommended-heading" className="text-lg font-bold text-foreground">
                     Spaces for your plans <span className="ai-count">{result.rooms.length}</span>
                   </h2>
-                  {(result.isSample || result.rooms.some((room) => room.isSample)) && <SampleDataLabel />}
                 </div>
-                <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} />
+                <SortSelect id="ai-sort" value={sortBy} onChange={setSortBy} bestMatch />
               </div>
               {result.rooms.length === 0 ? (
                 <div className="ai-empty"><Search size={28} /><h3>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "A few more details will help" : "Let’s try a different fit"}</h3><p>{!result.interpreted?.date || !result.times.startTime || !result.times.endTime ? "Add a date, start time, and end time using Edit above, then search again." : "No rooms match this request. Try a different time, a smaller group, or fewer equipment requirements."}</p><button type="button" onClick={() => { queryRef.current?.focus(); queryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Refine your request <ArrowRight size={15} /></button></div>
@@ -225,6 +217,11 @@ function Interpretation({ interpreted: r, times, editing, onEdit, overrides, set
           </div>
         ))}
       </dl>
+      {r.assumptions?.length > 0 && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Note:</span> {r.assumptions.join(". ")}.
+        </p>
+      )}
       {r.missing_information?.length > 0 && (
         <p className="mt-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Add:</span> {r.missing_information.join(", ")}

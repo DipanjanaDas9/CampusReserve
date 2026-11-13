@@ -36,7 +36,7 @@ def test_catalog_ai_matches_database_and_manual_search_still_works(client, stude
 
 def test_example_requests_missing_times_and_uses_campus_reference_date(client, student, ai_room, monkeypatch):
     captured = {}
-    def extract(query, reference_date):
+    def extract(query, reference_date, **kwargs):
         captured['reference'] = reference_date
         return RoomRequirements(group_size=6, date=(reference_date + timedelta(days=1)).isoformat(),
             start_time=None, end_time=None, building_name='library', floor_number=3,

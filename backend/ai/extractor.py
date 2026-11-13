@@ -1,6 +1,6 @@
 
 
-from datetime import date
+from datetime import date, time
 
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -28,6 +28,14 @@ class RoomRequirements(BaseModel):
     end_time: str | None = Field(
         description="Requested end time in 24-hour HH:MM format, or null if unknown."
     )
+    starts_now: bool = Field(
+        default=False,
+        description="True only when the user wants a room starting now, such as 'now', 'right now' or 'at the moment'.",
+    )
+    duration_minutes: int | None = Field(
+        default=None, ge=1,
+        description="Requested length in minutes when stated as a duration, such as 'for 2 hours' = 120; otherwise null.",
+    )
     equipment: list[str] = Field(
         description="Equipment explicitly requested, such as a projector or whiteboard."
     )
@@ -39,6 +47,7 @@ class RoomRequirements(BaseModel):
 def extract_room_requirements(
     request_text: str,
     reference_date: date | None = None,
+    reference_time: time | None = None,
 ) -> RoomRequirements:
     """Use Gemini to extract structured room-booking requirements."""
 
@@ -47,13 +56,13 @@ def extract_room_requirements(
 
     today = reference_date or date.today()
     client = get_gemini_client()
+    reference = f"Reference date: {today.isoformat()} ({today.strftime('%A')})\n"
+    if reference_time is not None:
+        reference += f"Current campus time: {reference_time.strftime('%H:%M')}\n"
 
     response = client.models.generate_content(
         model=get_ai_model(),
-        contents=(
-            f"Reference date: {today.isoformat()}\n"
-            f"Room request: {request_text}"
-        ),
+        contents=f"{reference}Room request: {request_text}",
         config=types.GenerateContentConfig(
             system_instruction=(
                 "You extract room-booking requirements for CampusReserve. "
@@ -73,6 +82,12 @@ def extract_room_requirements(
                 "Resolve relative dates such as 'tomorrow' using the reference "
                 "date supplied in the user message. "
                 "If a date or time is ambiguous, use null rather than guessing. "
+                "If the user wants a room now (for example 'now', 'right now', 'currently', "
+                "'at the moment' or 'which rooms are empty now'), set starts_now to true, "
+                "use the reference date, and leave start_time null; the system fills in the current time. "
+                "Otherwise starts_now is false. "
+                "If the user states a length such as 'for 2 hours', set duration_minutes. "
+                "If the user gives an end time, use end_time instead. "
                 "List important unspecified booking details in missing_information."
             ),
             response_mime_type="application/json",

@@ -1,12 +1,13 @@
 
 import logging
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from google.genai import errors
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ai.extractor import extract_room_requirements
+from ai.ranking import clock_label, rank_rooms
 from app.core.dependencies import get_current_user
 from app.routers.availability import check_availability
 from app.routers.facilities import get_facilities
@@ -18,6 +19,7 @@ router = APIRouter(
 )
 
 CAMPUS_ZONE = ZoneInfo("America/Chicago")
+NOW_DEFAULT_MINUTES = 60  # length searched for "now" when the request gives no end time (message says 1 hour)
 
 
 class AIRoomSearchRequest(BaseModel):
@@ -87,13 +89,24 @@ def ai_search_rooms(
     request: AIRoomSearchRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    campus_today = datetime.now(CAMPUS_ZONE).date()
+    campus_now = datetime.now(CAMPUS_ZONE)
+    campus_today = campus_now.date()
 
     try:
         extracted = extract_room_requirements(
             request.query,
             reference_date=campus_today,
+            reference_time=campus_now.time().replace(second=0, microsecond=0),
         )
+    except errors.ServerError as exc:
+        logging.warning("Gemini unavailable: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The AI service is busy right now. Please try again "
+                "in a minute, or use Search Spaces."
+            ),
+        ) from exc
     except errors.ClientError as exc:
         if exc.code == 429:
             raise HTTPException(
@@ -155,6 +168,28 @@ def ai_search_rooms(
             detail="The AI returned an invalid date or time.",
         ) from exc
 
+    assumptions = []
+    starts_now = extracted.starts_now and request.start_time is None
+    if starts_now:
+        # Start at the next 5-minute mark so the booking is in the future.
+        start = campus_now.replace(second=0, microsecond=0)
+        start += timedelta(minutes=5 - start.minute % 5)
+        search_date, start_time = start.date(), start.time()
+
+    if start_time is not None and end_time is None and search_date is not None:
+        length = extracted.duration_minutes
+        if length is None and starts_now:
+            length = NOW_DEFAULT_MINUTES
+            assumptions.append("Searched for 1 hour because no end time was given; use Edit to change it")
+        if length is not None:
+            end = datetime.combine(search_date, start_time) + timedelta(minutes=length)
+            end_time = end.time() if end.date() == search_date else time(23, 59)
+
+    if starts_now and end_time is not None:
+        assumptions.insert(0, f"Starting now: {clock_label(start_time.strftime('%H:%M'))} "
+                              f"to {clock_label(end_time.strftime('%H:%M'))}")
+
+    # Only what the search needs; Gemini's own list mixes field names and optional details.
     missing = []
     if search_date is None:
         missing.append("date")
@@ -168,9 +203,8 @@ def ai_search_rooms(
         "date": search_date.isoformat() if search_date else None,
         "start_time": start_time.isoformat(timespec="minutes") if start_time else None,
         "end_time": end_time.isoformat(timespec="minutes") if end_time else None,
-        "missing_information": list(dict.fromkeys(
-            extracted.missing_information + missing
-        )),
+        "missing_information": missing,
+        "assumptions": assumptions,
     })
 
     facilities = get_facilities()
@@ -259,9 +293,7 @@ def ai_search_rooms(
         if availability["available"]:
             results.append(facility)
 
-    results.sort(key=lambda room: (room["capacity"], room["name"]))
-
     return {
         "interpreted_requirements": interpreted,
-        "results": results,
+        "results": rank_rooms(results, interpreted),
     }

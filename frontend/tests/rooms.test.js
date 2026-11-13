@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { facilityToRoom, filterFacilities } from "../src/lib/rooms.js";
+import { facilityToRoom, filterFacilities, sortRooms } from "../src/lib/rooms.js";
+
+test("best-match sort puts the highest AI fit score first and breaks ties by capacity", () => {
+  const ranked = [
+    { name: "Small", capacity: 4, match_score: 70 },
+    { name: "Tie B", capacity: 8, match_score: 88 },
+    { name: "Exact", capacity: 6, match_score: 100 },
+    { name: "Tie A", capacity: 8, match_score: 88 },
+  ];
+  assert.deepEqual(sortRooms(ranked, "match").map((r) => r.name), ["Exact", "Tie A", "Tie B", "Small"]);
+  assert.deepEqual(sortRooms(ranked, "capacity").map((r) => r.name), ["Small", "Exact", "Tie A", "Tie B"]);
+  assert.deepEqual(sortRooms([{ name: "B", capacity: 9 }, { name: "A", capacity: 3 }], "match").map((r) => r.name), ["A", "B"]);
+});
 
 const rooms = [
   { id: 42, name: "Library ground", building_name: "Central Library", floor_number: 0, room_number: "LIB-G01", room_type: "Study room", capacity: 6, equipment: ["Monitor", "Whiteboard"], is_active: true },
