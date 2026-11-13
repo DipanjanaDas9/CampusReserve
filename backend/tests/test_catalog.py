@@ -6,7 +6,7 @@ import pytest
 from psycopg.errors import UniqueViolation
 
 from app.db import connection as db
-from app.db.catalog import DEMO_ROOMS
+from app.db.catalog import DEMO_ROOMS, seed_default_catalog
 from app.db.database import initialize_database
 from scripts.seed_demo import seed_demo
 from test_facilities import ROOM
@@ -100,6 +100,15 @@ def test_seed_is_opt_in_repeat_safe_and_preserves_admin_edits(monkeypatch):
         assert room["capacity"] == 99 and room["is_active"] == 0
         assert connection.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"] == 0
         assert connection.execute("SELECT COUNT(*) AS total FROM reservations").fetchone()["total"] == 0
+
+
+def test_default_catalog_seed_is_repeat_safe():
+    assert seed_default_catalog() == len(DEMO_ROOMS)
+    assert seed_default_catalog() == 0
+    with closing(db.get_connection()) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) AS total FROM facilities"
+        ).fetchone()["total"] == len(DEMO_ROOMS)
 
 def test_catalog_roundtrip_and_legacy_update(client, admin):
     created = client.post("/facilities", headers=admin, json={**ROOM, **ADDRESS})
