@@ -1,5 +1,8 @@
 """Additive room catalog migration and opt-in development data."""
+from contextlib import closing
 import json
+
+from .connection import get_connection
 
 CATALOG_COLUMNS = {
     "building_name": "TEXT",
@@ -103,3 +106,10 @@ def seed_demo_catalog(connection):
         ))
         added += cursor.rowcount
     return added
+
+
+def seed_default_catalog():
+    """Idempotently add the bundled campus room catalog to the configured database."""
+    with closing(get_connection()) as connection:
+        with connection.transaction():
+            return seed_demo_catalog(connection)

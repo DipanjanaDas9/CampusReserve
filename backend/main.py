@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db.catalog import seed_default_catalog
 from app.db.database import initialize_database
 from app.routers.auth import router as auth_router
 from app.routers.facilities import router as facilities_router
@@ -27,8 +28,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize SQLite tables
+# Initialize the configured database and make bundled rooms available.
 initialize_database()
+seed_default_catalog()
 
 # Register API routers
 app.include_router(auth_router)
