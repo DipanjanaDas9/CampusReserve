@@ -1,0 +1,216 @@
+from contextlib import closing
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.dependencies import require_admin
+from app.db.connection import get_connection
+from app.schemas.reservation import ReservationDecision
+
+
+router = APIRouter(
+    tags=["Administration"]
+)
+
+
+@router.patch("/reservations/{reservation_id}/decision")
+def decide_reservation(
+    reservation_id: int,
+    decision: ReservationDecision,
+    admin: dict = Depends(require_admin)
+):
+    with closing(get_connection()) as connection:
+        try:
+
+            reservation = connection.execute(
+                """
+                SELECT
+                    r.id,
+                    r.user_id,
+                    r.status,
+                    f.name AS facility_name,
+                    r.start_time,
+                    r.end_time
+                FROM reservations r
+                JOIN facilities f ON r.facility_id = f.id
+                WHERE r.id = %s
+                FOR UPDATE OF r
+                """,
+                (reservation_id,)
+            ).fetchone()
+
+            if reservation is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Reservation not found"
+                )
+
+            if reservation["status"] != "pending":
+                raise HTTPException(
+                    status_code=409,
+                    detail="Only pending reservations can be reviewed"
+                )
+
+            rejection_reason = None
+            if decision.status == "denied":
+                rejection_reason = (decision.reason or "").strip() or None
+
+            connection.execute(
+                """
+                UPDATE reservations
+                SET status = %s, rejection_reason = %s
+                WHERE id = %s
+                """,
+                (decision.status, rejection_reason, reservation_id)
+            )
+            
+            if decision.status == "approved":
+                kind = "confirmed"
+                title = "Reservation confirmed"
+                body = (
+                    f"Your reservation for {reservation['facility_name']} "
+                    f"has been approved."
+                )
+            else:
+                kind = "cancelled"
+                title = "Reservation rejected"
+                body = (
+                    f"Your reservation request for {reservation['facility_name']} "
+                    f"has been rejected."
+                )
+                if rejection_reason:
+                    body += f" Reason: {rejection_reason}"
+
+            connection.execute(
+                """
+                INSERT INTO notifications
+                    (user_id, reservation_id, kind, title, body)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    reservation["user_id"],
+                    reservation_id,
+                    kind,
+                    title,
+                    body,
+                )
+            )
+
+
+            connection.commit()
+
+        except Exception:
+            connection.rollback()
+            raise
+
+    return {
+        "message": f"Reservation {decision.status} successfully",
+        "reservation_id": reservation_id,
+        "status": decision.status
+    }
+
+
+@router.get("/admin/reservations")
+def get_all_reservations(
+    admin: dict = Depends(require_admin)
+):
+    with closing(get_connection()) as connection:
+        reservations = connection.execute(
+            """
+            SELECT
+                r.id,
+                r.user_id,
+                u.name AS requester_name,
+                u.email AS requester_email,
+                r.facility_id,
+                f.name AS facility_name,
+                r.start_time,
+                r.end_time,
+                r.status,
+                r.checked_in_at,
+                r.attendees,
+                r.purpose,
+                r.notes,
+                r.rejection_reason,
+                r.created_at
+            FROM reservations r
+            JOIN users u ON r.user_id = u.id
+            JOIN facilities f ON r.facility_id = f.id
+            ORDER BY r.created_at DESC, r.id DESC
+            """
+        ).fetchall()
+
+    return [dict(reservation) for reservation in reservations]
+
+
+@router.get("/admin/no-shows")
+def get_no_shows(
+    admin: dict = Depends(require_admin)
+):
+    now = datetime.now(timezone.utc)
+
+    with closing(get_connection()) as connection:
+        reservations = connection.execute(
+            """
+            SELECT
+                r.id,
+                r.user_id,
+                u.name AS requester_name,
+                u.email AS requester_email,
+                r.facility_id,
+                f.name AS facility_name,
+                r.start_time,
+                r.end_time,
+                r.status,
+                r.checked_in_at,
+                r.attendees,
+                r.purpose
+            FROM reservations r
+            JOIN users u ON r.user_id = u.id
+            JOIN facilities f ON r.facility_id = f.id
+            WHERE r.status = 'approved'
+              AND r.checked_in_at IS NULL
+            ORDER BY r.end_time DESC
+            """
+        ).fetchall()
+
+    no_shows = []
+
+    for reservation in reservations:
+        end = datetime.fromisoformat(
+            reservation["end_time"].replace("Z", "+00:00")
+        )
+
+        # Reservation timestamps are stored in UTC.
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+
+        # A no-show is confirmed only after the booking ends.
+        if end <= now:
+            no_show = dict(reservation)
+            no_show["attendance_status"] = "no_show"
+            no_shows.append(no_show)
+
+    return {
+        "total_no_shows": len(no_shows),
+        "no_shows": no_shows
+    }
+
+
+@router.get("/admin/users")
+def get_all_users(
+    admin: dict = Depends(require_admin)
+):
+    with closing(get_connection()) as connection:
+        users = connection.execute(
+            """
+            SELECT
+                id,
+                name,
+                email,
+                role,
+                created_at
+            FROM users
+            ORDER BY created_at DESC, id DESC
+            """
+        ).fetchall()
+
+    return [dict(user) for user in users]

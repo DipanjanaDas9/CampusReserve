@@ -1,48 +1,147 @@
+# CampusReserve
 
-# CampusReserve – AI-Powered Campus Space & Facility Reservation Manager
+## Running locally
 
-CampusReserve is a web-based campus facility reservation system designed to simplify how students find, request, and manage university spaces. Students can browse rooms based on capacity, equipment, location, and availability, while facility administrators can manage spaces, review reservation requests, and monitor facility usage.
+Backend (FastAPI, PostgreSQL). The server will not start without a signing key of at least 32 characters:
 
-The application combines a **React frontend**, a **FastAPI backend**, and a **SQLite database**. It also includes an **AI Smart Space Finder**, which uses **Google Gemini** to interpret natural-language room requests and convert them into structured search criteria.
+```bash
+cd backend
+pip install -r requirements.txt
+export CAMPUSRESERVE_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+uvicorn main:app --reload        # http://127.0.0.1:8000, API docs at /docs
+```
 
-## Key Features
+Frontend (React + Vite):
 
-### For Students
-- Register and log in securely.
-- Browse and filter campus spaces by capacity, equipment, date, and time.
-- View facility details and availability.
-- Request reservations and view reservation history.
-- Cancel eligible reservations.
-- Access check-in and notification interfaces.
+```bash
+cd frontend
+npm install
+npm run dev                      # http://localhost:5173
+```
 
-### For Administrators
-- Manage facilities and their details.
-- Review and approve or deny reservation requests.
-- Access administrative dashboards and management interfaces.
+### Optional settings
 
-### AI Smart Space Finder
+Set these in the environment or in `backend/.env`. The app runs without them, but the feature stays off:
 
-Students can describe what they need in everyday language, for example:
+| Feature | Settings | Without them |
+| --- | --- | --- |
+| Password reset email | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, optional `SMTP_PORT` (default 587) and `FRONTEND_URL` | No email is sent. The page still shows its usual message, and the failure appears only in the backend log. |
+| AI room search | `GEMINI_API_KEY`, optional `GEMINI_MODEL`
 
-> Find a room for 5 people tomorrow from 2 PM to 4 PM with a projector.
+## Administrator accounts
 
-Google Gemini extracts relevant details such as group size, date, time, and equipment. The backend then checks room data and availability to return matching spaces.
+Administrators cannot sign up through the app. Register the account on the Register
+page, then give it the admin role from the `backend` folder:
 
-**The AI interprets the request; the backend makes the availability decisions.**
+```bash
+python scripts/make_admin.py admin@university.edu
+```
 
-## Tech Stack
+Sign in on the **Admin** tab of the login page. Accounts without the admin role are
+refused there, and the `/admin` pages redirect them to the student dashboard.
 
-| Layer | Technologies |
-| --- | --- |
-| Frontend | React, JavaScript, Vite, HTML, CSS |
-| Backend | Python, FastAPI, Pydantic |
-| Database | SQLite |
-| AI | Google Gemini API |
-| Authentication | JWT and role-based access control |
-| Version Control | Git and GitHub |
-| Project Management | Agile Scrum, monday.com |
+## Backend tests
 
-## Project Goal
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
-To provide a centralized, accessible, and intelligent platform that reduces booking conflicts, simplifies room discovery, and helps universities manage campus spaces more efficiently.
+## Campus room catalog and development data
+
+Facilities now expose optional `building_name`, integer `floor_number`,
+`room_number`, and `room_type` fields. Floor `0` is the ground floor; negative
+integers can represent basement floors. Capacity is **maximum occupants**, never
+live occupancy. Admins can set these fields in Manage Facilities; room results
+and details display them, and Gemini can extract explicit catalog requirements.
+AI search resolves building shorthand such as “the library” when it uniquely
+identifies a catalog building. Ambiguous mentions return building choices rather
+than guessing; an explicit catalog name takes priority. Room types match ignoring
+case and trailing plural `s`. The existing capacity, equipment, operating-hours, and booking rules still
+apply.
+
+The startup migration adds nullable columns and a unique index for known
+building/floor/room combinations, ignoring capitalization and surrounding spaces.
+Legacy facilities keep their IDs and all existing values; their unknown catalog
+fields remain null. Assign building, floor, and room together when cataloging a
+legacy room. Room type can be set independently. Older API payloads remain valid,
+and updates that omit catalog fields preserve stored catalog values.
+
+The bundled fictional room catalog is added automatically when the API starts.
+Each local or deployed database gets the rooms on first startup; repeated
+startups skip existing catalog addresses and preserve room edits. The explicit
+seed command can also be used from `backend`:
+
+```bash
+python scripts/seed_demo.py --demo
+```
+
+To create the optional demo student and administrator accounts, set
+`CAMPUSRESERVE_ENV` to `development` or `demo` and set
+`CAMPUSRESERVE_DEMO_STUDENT1_PASSWORD`, `CAMPUSRESERVE_DEMO_STUDENT2_PASSWORD`,
+and `CAMPUSRESERVE_DEMO_ADMIN_PASSWORD` in the environment. Each password must
+be 8–128 characters. Then run from `backend`:
+
+```bash
+python scripts/seed_demo_users.py --demo
+```
+
+The script hashes passwords with the application's existing password hasher,
+assigns the admin role only to `admin@demo.com`, and leaves existing accounts
+and passwords unchanged. It requires both the explicit flag and a development
+or demo environment; do not run it against production. Keep the passwords in
+your local environment or an untracked local `.env` file, never in source
+control. Existing demo users are not modified when the command is rerun.
+
+**30 fictional university rooms, are added**:
+
+| Building | Rooms | Catalog |
+| --- | ---: | --- |
+| Central Library | 10 | Two study rooms on each of floors 1–5 (`LIB-101`–`LIB-502`) |
+| Engineering Building | 8 | Laboratories, study rooms, conference rooms |
+| Student Center | 6 | Meeting rooms and multipurpose rooms |
+| Science Building | 6 | Study rooms and collaboration rooms |
+
+Each room includes maximum capacity, equipment, operating hours, optional
+restrictions, and active status. Two rooms are inactive to demonstrate that state.
+
+### Facility API filters
+
+`GET /facilities` still returns all rooms as a JSON array when no filters are
+provided. Optional query parameters can be combined (AND):
+
+- `building_name`: exact building name, ignoring case and surrounding spaces.
+- `floor_number`: integer floor, including `0` (ground) or negative basement floors.
+- `min_capacity`, `max_capacity`: inclusive positive bounds on maximum occupants.
+- `equipment`: repeat the parameter to require every item; matching ignores case,
+  surrounding/repeated spaces, and trailing plural `s`, as in existing room search.
+- `is_active`: `true` or `false`; omit to include both for existing admin clients.
+
+Example: `/facilities?building_name=Central%20Library&floor_number=2&min_capacity=5&equipment=Monitor&equipment=Whiteboard`.
+Invalid filter values return 422; no matches returns `[]`. This catalog endpoint
+filters room attributes, not live occupancy or booking availability. Continue to
+use `GET /facilities/{id}/availability` for a time window; reservation creation
+still rechecks capacity, active status, operating hours, and booking conflicts.
+
+Equipment is stored as JSON text in SQLite and returned as a list of strings.
+Malformed legacy equipment values are logged and exposed as `[]` rather than
+crashing listings, details, or AI search; reads never rewrite the stored data.
+
+### AI catalog search
+
+Gemini extracts building, integer floor (third floor = 3; ground = 0), group
+size, equipment, room type, and date/time requirements. Relative dates use the
+campus date in America/Chicago. Capacity is maximum occupants, not live occupancy.
+
+For example, “Find a study room for 6 people on the third floor of the library
+tomorrow with a projector” leaves start and end times unspecified. The response
+lists missing details and returns no availability results until times are supplied
+in the prompt or Edit controls. Explicit date/time fields override AI extraction.
+Building and floor are shown in the interpreted requirements summary.
+
+Results are actual facilities, filtered by catalog requirements, active
+status, maximum capacity, and every requested equipment item. Each candidate must
+pass the same time-window and booking-conflict checks as manual availability.
+Manual Search Spaces remains independent of Gemini and works without an API key.
 
