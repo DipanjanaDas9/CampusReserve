@@ -59,9 +59,16 @@ function getWeeklyReservationData(reservations) {
     if (!reservation.created_at) continue;
 
     // SQLite CURRENT_TIMESTAMP is stored in UTC.
-    const timestamp = reservation.created_at.includes("T")
-      ? reservation.created_at
-      : reservation.created_at.replace(" ", "T") + "Z";
+    // Normalize PostgreSQL timestamps for JavaScript.
+    let timestamp = reservation.created_at.replace(" ", "T");
+
+    // Convert timezone offsets such as +00 or -06 to +00:00 or -06:00.
+    timestamp = timestamp.replace(/([+-]\d{2})$/, "$1:00");
+
+    // Assume UTC only when no timezone is provided.
+    if (!/(Z|[+-]\d{2}:\d{2})$/i.test(timestamp)) {
+      timestamp += "Z";
+    }
 
     const created = new Date(timestamp);
 
