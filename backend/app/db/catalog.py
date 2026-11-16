@@ -80,6 +80,16 @@ DEMO_ROOMS = [
 
 def seed_demo_catalog(connection):
     """Caller owns transaction; insert missing addresses without changing rows."""
+    disclaimer = "Fictional university demo facility; not verified UTA room information."
+    connection.execute(
+        """
+        UPDATE facilities
+        SET restrictions = NULLIF(trim(replace(restrictions, %s, '')), '')
+        WHERE restrictions LIKE %s
+        """,
+        (disclaimer, f"{disclaimer}%"),
+    )
+
     added = 0
     for room in DEMO_ROOMS:
         cursor = connection.execute("""
@@ -100,8 +110,7 @@ def seed_demo_catalog(connection):
             room['room_type'], room['capacity'], json.dumps(room['equipment']),
             f"{room['building_name']} · Floor {room['floor_number']} · Room {room['room_number']}",
             room['opening_time'], room['closing_time'],
-            "Fictional university demo facility; not verified UTA room information."
-            + (f" {room['restrictions']}" if room['restrictions'] else ""),
+            room['restrictions'],
             int(room['is_active']), room['building_name'], room['floor_number'], room['room_number'],
         ))
         added += cursor.rowcount

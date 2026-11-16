@@ -1,15 +1,14 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { StudentPageHeader } from "../components/StudentPageHeader";
 import {
   Building2,
   CalendarDays,
-  CheckCircle2,
+  Check,
   Clock,
   Info,
-  ShieldCheck,
-  Timer,
+  MapPin,
+  ReceiptText,
   Users,
 } from "lucide-react";
 
@@ -18,6 +17,9 @@ import {
   getMyReservations,
   checkInReservation,
 } from "../api/reservations";
+import { getFacilities } from "../api/availability";
+import { ROOM_PHOTOS } from "../data/sampleRooms";
+import "../components/StudentPages.css";
 
 const CAMPUS_TIMEZONE = "America/Chicago";
 
@@ -38,14 +40,37 @@ function formatTime(value) {
   });
 }
 
+function formatFloor(value) {
+  if (value == null || value === "") return "";
+  const floor = Number(value);
+  if (!Number.isInteger(floor)) return `Floor ${value}`;
+  if (floor === 0) return "Ground Floor";
+
+  const lastTwoDigits = floor % 100;
+  const suffix =
+    lastTwoDigits >= 11 && lastTwoDigits <= 13
+      ? "th"
+      : floor % 10 === 1
+        ? "st"
+        : floor % 10 === 2
+          ? "nd"
+          : floor % 10 === 3
+            ? "rd"
+            : "th";
+  return `${floor}${suffix} Floor`;
+}
+
 export function CheckInPage() {
   const [reservations, setReservations] = useState([]);
+  const [facilities, setFacilities] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [facilityError, setFacilityError] = useState("");
   const [message, setMessage] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [photoSelection, setPhotoSelection] = useState(null);
 
   useEffect(() => {
     const refresh = () => setNow(Date.now());
@@ -59,11 +84,27 @@ export function CheckInPage() {
 
     async function load() {
       try {
-        const data = await getMyReservations();
+        const [reservationResult, facilityResult] = await Promise.allSettled([
+          getMyReservations(),
+          getFacilities(),
+        ]);
 
         if (!active) return;
 
+        if (reservationResult.status === "rejected") {
+          throw reservationResult.reason;
+        }
+
+        const data = reservationResult.value;
         setReservations(data);
+
+        if (facilityResult.status === "fulfilled") {
+          setFacilities(facilityResult.value);
+        } else {
+          setFacilityError(
+            facilityResult.reason?.message || "Could not load facility details."
+          );
+        }
 
         const firstApproved = data.find(
           (r) =>
@@ -104,6 +145,22 @@ export function CheckInPage() {
     (r) => String(r.id) === selectedId
   );
 
+  const selectedFacility = facilities.find(
+    (facility) => String(facility.id) === String(selected?.facility_id)
+  );
+  const buildingLocation =
+    selectedFacility?.building_name?.trim() ||
+    selectedFacility?.location?.trim();
+  const floorLocation = formatFloor(selectedFacility?.floor_number);
+  const facilityLocation =
+    buildingLocation && floorLocation
+      ? `${buildingLocation} · ${floorLocation}`
+      : buildingLocation || floorLocation;
+  const defaultImageIndex = 0;
+  const imageIndex =
+    photoSelection?.reservationId === String(selected?.id)
+      ? photoSelection.index
+      : defaultImageIndex;
 
   const withinCheckInWindow =
     selected &&
@@ -126,24 +183,13 @@ export function CheckInPage() {
         },
         {
           icon: Users,
-          label: "Group Size",
-          value: `${selected.attendees ?? 1} people`,
+          label: "Attendees",
+          value: `${selected.attendees ?? 1}`,
         },
         {
-          icon: ShieldCheck,
-          label: "Status",
-          value: "Approved",
-          badge: true,
-        },
-        {
-          icon: Timer,
-          label: "Check-in Opens",
-          value: formatTime(
-            new Date(
-              new Date(selected.start_time).getTime() -
-                15 * 60 * 1000
-            )
-          ),
+          icon: ReceiptText,
+          label: "Reservation ID",
+          value: `CR-${String(selected.id).padStart(6, "0")}`,
         },
       ]
     : [];
@@ -175,21 +221,35 @@ export function CheckInPage() {
   }
 
   return (
-    <StudentLayout active="reservations">
-      <div className="student-page checkin-page mx-auto max-w-5xl">
-        <StudentPageHeader eyebrow="YOU’RE RIGHT WHERE YOU NEED TO BE" title="Arrive. Check in. Settle in." description="Your space is waiting. Confirm your arrival and make it yours." />
-        <div className="checkin-layout"><div>
+    <StudentLayout>
+      <div className="student-page checkin-page">
+        <header className="checkin-hero">
+          <div className="checkin-hero-art" aria-hidden="true">
+            <div className="checkin-hero-platform" />
+            <div className="checkin-hero-marker">
+              <Check />
+            </div>
+          </div>
+          <span className="checkin-hero-divider" aria-hidden="true" />
+          <div className="checkin-hero-copy">
+            <h1>Check In to Your Reservation</h1>
+            <p>Confirm your arrival to start your reservation and access your space.</p>
+          </div>
+        </header>
+
+        {error && <p role="alert" className="checkin-error">{error}</p>}
+
         {loading ? (
-          <p className="student-empty" role="status">
+          <p className="checkin-loading" role="status">
             Loading your reservations...
           </p>
         ) : (
           <>
-            {approvedReservations.length > 0 && (
-              <div className="mt-6">
+            {approvedReservations.length > 1 && (
+              <div className="checkin-selection">
                 <label
                   htmlFor="check-in-reservation"
-                  className="mb-2 block text-sm font-medium"
+                  className="checkin-selection-label"
                 >
                   Select your reservation
                 </label>
@@ -202,7 +262,7 @@ export function CheckInPage() {
                     setError("");
                     setMessage("");
                   }}
-                  className="w-full rounded-md border bg-card p-3 text-sm"
+                  className="checkin-selection-select"
                 >
                   <option value="">Choose a reservation</option>
                   {approvedReservations.map((r) => (
@@ -219,68 +279,99 @@ export function CheckInPage() {
             )}
 
             {selected && (
-              <div className="checkin-ticket">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-20 items-center justify-center rounded-md bg-secondary">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-foreground">
-                      {selected.facility_name ||
-                        `Facility #${selected.facility_id}`}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Reservation R-{selected.id}
-                    </div>
+              <section className="checkin-reservation-card" aria-labelledby="checkin-facility-name">
+                <div className="checkin-gallery">
+                  <img
+                    src={ROOM_PHOTOS[imageIndex]}
+                    alt={`${selected.facility_name || "Reserved campus space"} interior`}
+                    className="checkin-room-photo"
+                  />
+                  <div className="checkin-gallery-dots" aria-label="Room photos">
+                    {ROOM_PHOTOS.map((photo, index) => (
+                      <button
+                        key={photo}
+                        type="button"
+                        aria-label={`Show room photo ${index + 1}`}
+                        aria-pressed={imageIndex === index}
+                        className={imageIndex === index ? "is-active" : ""}
+                        onClick={() => setPhotoSelection({ reservationId: String(selected.id), index })}
+                      />
+                    ))}
                   </div>
                 </div>
 
-                <dl className="mt-5 divide-y border-t text-sm">
-                  {rows.map(({ icon: Icon, label, value, badge }) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-4 py-3"
-                    >
-                      <dt className="flex items-center gap-2 text-muted-foreground">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {label}
-                      </dt>
+                <div className="checkin-reservation-details">
+                  <div className="checkin-facility-heading">
+                    <h2 id="checkin-facility-name">
+                      {selected.facility_name || `Facility #${selected.facility_id}`}
+                    </h2>
+                    <p className="checkin-facility-location">
+                      <MapPin aria-hidden="true" />
+                      {facilityLocation || (facilityError ? "Location details unavailable" : "Loading location…")}
+                    </p>
+                    {facilityError && (
+                      <p className="checkin-location-error" role="status">
+                        {facilityError}
+                      </p>
+                    )}
+                  </div>
 
-                      <dd className="text-right font-medium text-foreground">
-                        {badge ? (
-                          <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-xs text-success">
-                            {value}
-                          </span>
-                        ) : (
-                          value
-                        )}
-                      </dd>
+                  <dl className="checkin-detail-grid">
+                    {rows.map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="checkin-detail-item">
+                        <Icon aria-hidden="true" />
+                        <div>
+                          <dt>{label}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <section className="checkin-booking-summary" aria-labelledby="checkin-summary-heading">
+                    <h3 id="checkin-summary-heading">Booking Summary</h3>
+                    <div className="checkin-summary-item">
+                      <Users aria-hidden="true" />
+                      <div>
+                        <strong>{selected.facility_name || `Facility #${selected.facility_id}`}</strong>
+                        <p>
+                          {formatDate(selected.start_time)}
+                          <span aria-hidden="true"> · </span>
+                          {formatTime(selected.start_time)} – {formatTime(selected.end_time)}
+                          <span aria-hidden="true"> · </span>
+                          {selected.attendees ?? 1} attendees
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </dl>
+                  </section>
 
                 <button
                   type="button"
                   onClick={handleCheckIn}
                   disabled={busy || !withinCheckInWindow}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="checkin-submit"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <span><Check aria-hidden="true" /></span>
                   {busy ? "Checking in..." : "Check In"}
                 </button>
 
-                <div className="mt-4 flex items-start gap-2 rounded-md bg-primary/10 p-3 text-sm text-primary">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                  {withinCheckInWindow
-                    ? "Your check-in window is open."
-                    : "Check-in opens 15 minutes before your reservation and closes when it ends."}
+                  {!withinCheckInWindow && (
+                    <p className="checkin-window-note" role="status">
+                      <Info aria-hidden="true" />
+                      Check-in opens 15 minutes before your reservation and closes when it ends.
+                    </p>
+                  )}
                 </div>
-              </div>
+              </section>
             )}
 
             {!selected && !message && !error && (
-              <div className="student-empty"><span className="student-empty-icon"><CalendarDays size={28} /></span><h2>{approvedReservations.length ? "Choose your space above" : "No check-ins just yet"}</h2><p>{approvedReservations.length ? "Select a reservation to see its details and check-in window." : "Your approved upcoming reservations will appear here when they’re ready."}</p><Link to="/reservations">View my reservations</Link></div>
+              <div className="checkin-empty">
+                <span><Building2 aria-hidden="true" /></span>
+                <h2>{approvedReservations.length ? "Choose a reservation" : "No check-ins just yet"}</h2>
+                <p>{approvedReservations.length ? "Select a reservation to see its details and check-in window." : "Your approved upcoming reservations will appear here when they’re ready."}</p>
+                <Link to="/reservations">View my reservations</Link>
+              </div>
             )}
 
             {message && (
@@ -292,17 +383,8 @@ export function CheckInPage() {
               </p>
             )}
 
-            {error && (
-              <p
-                role="alert"
-                className="mt-4 text-center text-sm text-destructive"
-              >
-                {error}
-              </p>
-            )}
           </>
         )}
-        </div></div>
       </div>
     </StudentLayout>
   );

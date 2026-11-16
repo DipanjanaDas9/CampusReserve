@@ -40,7 +40,7 @@ async function post(path, payload) {
   return body;
 }
 
-export async function login({ email, password, role }) {
+export async function login({ email, password, role, remember = false }) {
   // The backend authenticates students and administrators.
   const data = await post("/auth/login", { email, password });
 
@@ -63,6 +63,13 @@ export async function login({ email, password, role }) {
 
   sessionStorage.setItem("access_token", data.access_token);
   sessionStorage.setItem("campus_user", JSON.stringify(data.user));
+  if (remember) {
+    localStorage.setItem("access_token", data.access_token);
+    localStorage.setItem("campus_user", JSON.stringify(data.user));
+  } else {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("campus_user");
+  }
 
   return {
     ...data,

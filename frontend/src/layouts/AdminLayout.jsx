@@ -37,6 +37,8 @@ export function AdminLayout({ active, children }) {
   function handleLogout() {
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("campus_user");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("campus_user");
     navigate("/login", { replace: true });
   }
 

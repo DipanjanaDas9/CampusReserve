@@ -110,6 +110,38 @@ def test_default_catalog_seed_is_repeat_safe():
             "SELECT COUNT(*) AS total FROM facilities"
         ).fetchone()["total"] == len(DEMO_ROOMS)
 
+
+def test_catalog_seed_removes_demo_disclaimer_from_room_restrictions():
+    assert seed_default_catalog() == len(DEMO_ROOMS)
+    with closing(db.get_connection()) as connection, connection:
+        room = connection.execute(
+            "SELECT id FROM facilities ORDER BY id LIMIT 1"
+        ).fetchone()
+        connection.execute(
+            "UPDATE facilities SET restrictions=%s WHERE id=%s",
+            (
+                "Fictional university demo facility; not verified UTA room information. "
+                "Quiet study; no food.",
+                room["id"],
+            ),
+        )
+
+    assert seed_default_catalog() == 0
+
+    with closing(db.get_connection()) as connection:
+        restrictions = connection.execute(
+            "SELECT restrictions FROM facilities WHERE id=%s",
+            (room["id"],),
+        ).fetchone()["restrictions"]
+
+    assert restrictions == "Quiet study; no food."
+    assert all(
+        "Fictional university demo facility" not in room["restrictions"]
+        for room in DEMO_ROOMS
+        if room["restrictions"]
+    )
+
+
 def test_catalog_roundtrip_and_legacy_update(client, admin):
     created = client.post("/facilities", headers=admin, json={**ROOM, **ADDRESS})
     assert created.status_code == 201
