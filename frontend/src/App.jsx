@@ -21,6 +21,16 @@ import { useEffect, useState } from "react";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage.jsx";
 
+if (!sessionStorage.getItem("access_token")) {
+  const rememberedToken = localStorage.getItem("access_token");
+  const rememberedUser = localStorage.getItem("campus_user");
+
+  if (rememberedToken && rememberedUser) {
+    sessionStorage.setItem("access_token", rememberedToken);
+    sessionStorage.setItem("campus_user", rememberedUser);
+  }
+}
+
 function RequireLogin() {
   const [expired, setExpired] = useState(false);
 
@@ -32,6 +42,8 @@ function RequireLogin() {
     function expireSession() {
       sessionStorage.removeItem("access_token");
       sessionStorage.removeItem("campus_user");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("campus_user");
       setExpired(true);
     }
 

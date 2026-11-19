@@ -7,6 +7,7 @@ import {
   RefreshCw,
   CalendarDays,
 } from "lucide-react";
+import { AdminBanner } from "../../components/AdminBanner";
 import { AdminLayout } from "../../layouts/AdminLayout";
 
 const API_BASE_URL =
@@ -181,18 +182,11 @@ export function AdminNotificationsPage() {
 
   return (
     <AdminLayout active="notifications">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Admin Notifications
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Stay updated on reservation requests and cancellations.
-            </p>
-          </div>
+      <div className="admin-banner-page space-y-6">
+        <AdminBanner eyebrow="Admin • CampusReserve" title="Admin Notifications"
+          description="Stay updated on reservation requests and cancellations." />
 
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={() => setRefreshKey((key) => key + 1)}
@@ -217,7 +211,6 @@ export function AdminNotificationsPage() {
               <CheckCheck className="h-4 w-4" />
               {markingAll ? "Updating..." : "Mark all as read"}
             </button>
-          </div>
         </div>
 
         {!loading && !error && (

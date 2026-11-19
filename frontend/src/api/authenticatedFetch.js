@@ -22,6 +22,8 @@ export async function authenticatedFetch(url, options = {}) {
 
         sessionStorage.removeItem("access_token");
         sessionStorage.removeItem("campus_user");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("campus_user");
 
         window.location.replace("/login?reason=expired");
 

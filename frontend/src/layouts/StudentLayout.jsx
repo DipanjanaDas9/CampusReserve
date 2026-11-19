@@ -1,35 +1,28 @@
-
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Bell,
-  Building2,
+  CalendarDays,
   CalendarCheck,
-  Clock3,
-  LayoutDashboard,
+  GraduationCap,
+  Home,
   LogOut,
   Search,
   Sparkles,
 } from "lucide-react";
-
 import "../App.css";
 
 const navigation = [
-  { label: "Dashboard", to: "/", icon: LayoutDashboard },
-  { label: "Search Spaces", to: "/search", icon: Search },
-  { label: "My Reservations", to: "/reservations", icon: CalendarCheck },
-  { label: "Notifications", to: "/notifications", icon: Bell },
-  { label: "AI Assistant", to: "/ai-finder", icon: Sparkles },
-  { label: "Check in", to: "/check-in", icon: Clock3 },
+  { label: "Home", to: "/", icon: Home },
+  { label: "Search", to: "/search", icon: Search },
+  { label: "AI Finder", to: "/ai-finder", icon: Sparkles },
+  { label: "Check In", to: "/check-in", icon: CalendarCheck },
+  { label: "Reservations", to: "/reservations", icon: CalendarDays },
 ];
 
 export function StudentLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const user = JSON.parse(
-    sessionStorage.getItem("campus_user") || "null"
-  );
-
+  const user = JSON.parse(sessionStorage.getItem("campus_user") || "null");
   const initials =
     user?.name
       ?.trim()
@@ -42,29 +35,32 @@ export function StudentLayout({ children }) {
   function handleLogout() {
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("campus_user");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("campus_user");
     navigate("/login", { replace: true });
   }
 
   return (
-    <div className="dashboard">
-      <aside className="dashboard-sidebar">
-        <Link to="/" className="dashboard-brand">
-          <Building2 aria-hidden="true" />
-          <span>CampusReserve</span>
+    <div className="student-shell">
+      <header className="student-topbar">
+        <Link to="/" className="student-brand" aria-label="CampusReserve home">
+          <GraduationCap aria-hidden="true" />
+          <span>
+            Campus<span>Reserve</span>
+          </span>
         </Link>
 
-        <nav className="dashboard-nav" aria-label="Main navigation">
+        <nav className="student-nav" aria-label="Main navigation">
           {navigation.map(({ label, to, icon: Icon }) => {
-            const isActive = location.pathname === to;
-
+            const isActive =
+              location.pathname === to ||
+              (to === "/search" && location.pathname.startsWith("/spaces/"));
             return (
               <Link
                 key={to}
                 to={to}
                 aria-current={isActive ? "page" : undefined}
-                className={`dashboard-nav-link${
-                  isActive ? " is-active" : ""
-                }`}
+                className={`student-nav-link${isActive ? " is-active" : ""}`}
               >
                 <Icon aria-hidden="true" />
                 <span>{label}</span>
@@ -73,47 +69,31 @@ export function StudentLayout({ children }) {
           })}
         </nav>
 
-        <div className="dashboard-account">
-          <div className="account-avatar">{initials}</div>
-
-          <div className="account-details">
-            <strong>{user?.name || "Student"}</strong>
-            <span>{user?.email || "Campus member"}</span>
-          </div>
-
-          <button
-            type="button"
-            className="sidebar-logout"
-            onClick={handleLogout}
-            aria-label="Log out"
-            title="Log out"
-          >
-            <LogOut aria-hidden="true" />
-          </button>
-        </div>
-      </aside>
-
-      <main className="dashboard-main">
-        <header className="dashboard-topbar">
+        <div className="student-topbar-actions">
           <Link
             to="/notifications"
-            className="topbar-icon-button"
+            className="student-notification-link"
             aria-label="Notifications"
           >
             <Bell aria-hidden="true" />
           </Link>
-
-          <div
-            className="topbar-avatar"
-            aria-label={user?.name || "Student"}
-          >
-            {initials}
-          </div>
-        </header>
-
-        <div className="dashboard-content">
-          {children}
+          <details className="student-profile">
+            <summary aria-label={`${user?.name || "Student"} account menu`}>
+              {initials}
+            </summary>
+            <div className="student-profile-menu">
+              <strong>{user?.name || "Student"}</strong>
+              <span>{user?.email || "Campus member"}</span>
+              <button type="button" onClick={handleLogout}>
+                <LogOut aria-hidden="true" /> Sign out
+              </button>
+            </div>
+          </details>
         </div>
+      </header>
+
+      <main className="student-main">
+        <div className="dashboard-content student-content">{children}</div>
       </main>
     </div>
   );

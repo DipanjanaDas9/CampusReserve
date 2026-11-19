@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AlertCircle, Check, CheckCircle2, Eye, EyeOff, Info, Loader2, Lock, Mail, User } from "lucide-react";
-import { AuthLayout } from "../../layouts/AuthLayout";
+import { AuthLayout, BrandLogo } from "../../layouts/AuthLayout";
 import { PASSWORD_MIN_LENGTH, register, RegistrationNotConnectedError } from "../../api/auth";
 const PASSWORD_RULES = [
     { id: "length", label: `At least ${PASSWORD_MIN_LENGTH} characters`, test: (p) => p.length >= PASSWORD_MIN_LENGTH },
@@ -19,7 +19,6 @@ const schema = z
     confirm: z.string().min(1, "Please confirm your password."),
 })
     .refine((d) => d.password === d.confirm, { path: ["confirm"], message: "Passwords do not match." });
-const inputBase = "w-full rounded-lg border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary";
 function FieldError({ id, msg }) {
     if (!msg)
         return null;
@@ -29,16 +28,20 @@ function FieldError({ id, msg }) {
 }
 function InputField({ id, label, type, placeholder, autoComplete, icon, value, onChange, error, toggle, extra }) {
     const errId = `${id}-error`;
-    return (<div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-foreground">
-        {label}
-      </label>
-      <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</span>
-        <input id={id} type={toggle ? (toggle.shown ? "text" : "password") : type} autoComplete={autoComplete} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={!!error} aria-describedby={error ? errId : undefined} className={`${inputBase} ${toggle ? "pr-10" : ""} ${error ? "border-destructive" : "border-input"}`}/>
-        {toggle && (<button type="button" onClick={toggle.onToggle} aria-label={toggle.shown ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {toggle.shown ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-          </button>)}
+    return (<div className="register-field">
+      <div className="register-input-row">
+        <span className="register-field-icon" aria-hidden="true">{icon}</span>
+        <div className="register-input-control">
+          <label htmlFor={id} className="register-field-label">
+            {label}
+          </label>
+          <div className="register-input-wrap">
+            <input id={id} type={toggle ? (toggle.shown ? "text" : "password") : type} autoComplete={autoComplete} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={!!error} aria-describedby={error ? errId : undefined} className={`register-input-field ${error ? "has-error" : ""} ${toggle ? "has-toggle" : ""}`}/>
+            {toggle && (<button type="button" onClick={toggle.onToggle} aria-label={toggle.shown ? "Hide password" : "Show password"} className="register-password-toggle">
+              {toggle.shown ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+            </button>)}
+          </div>
+        </div>
       </div>
       {extra}
       <FieldError id={errId} msg={error}/>
@@ -96,17 +99,18 @@ export function RegisterPage() {
         error: "border-destructive/30 bg-destructive/10 text-destructive",
         success: "border-primary/30 bg-accent text-accent-foreground",
     };
-    return (<AuthLayout>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
-        <h1 className="font-display text-2xl font-bold text-foreground">Create an Account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Join CampusReserve to book campus spaces.</p>
+    return (<AuthLayout variant="register">
+      <div className="register-card">
+        <div className="login-card-brand"><BrandLogo /></div>
+        <h1 className="register-heading">Student Registration</h1>
+        <p className="register-description">Join CampusReserve in minutes</p>
 
         {notice && (<div role="status" className={`mt-5 flex items-start gap-2 rounded-lg border p-3 text-sm ${noticeStyles[notice.kind]}`}>
             {notice.kind === "error" ? (<AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/>) : notice.kind === "success" ? (<CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/>) : (<Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/>)}
             <span>{notice.text}</span>
           </div>)}
 
-        <form onSubmit={onSubmit} noValidate className="mt-6 space-y-5">
+        <form onSubmit={onSubmit} noValidate className="register-form">
           <InputField id="fullName" label="Full Name" type="text" placeholder="Enter your full name" autoComplete="name" icon={<User className="h-4 w-4" aria-hidden="true"/>} value={fullName} onChange={setFullName} error={errors.fullName}/>
           <InputField id="email" label="University Email" type="email" placeholder="yourname@university.edu" autoComplete="email" icon={<Mail className="h-4 w-4" aria-hidden="true"/>} value={email} onChange={setEmail} error={errors.email}/>
           <InputField id="password" label="Password" type="password" placeholder="Create a password" autoComplete="new-password" icon={<Lock className="h-4 w-4" aria-hidden="true"/>} value={password} onChange={setPassword} error={errors.password} toggle={{ shown: showPw, onToggle: () => setShowPw((s) => !s) }} extra={<ul className="mt-2 space-y-1" aria-label="Password requirements">
@@ -125,7 +129,7 @@ export function RegisterPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="register-signin">
           Already have an account?{" "}
           <Link to="/login" className="font-semibold text-primary hover:underline">
             Sign In

@@ -266,7 +266,6 @@ useEffect(() => {
             {selection && (<button type="button" onClick={() => setSelection(null)} className="text-sm text-muted-foreground hover:underline">
                 Clear selection
               </button>)}
-            <span className="text-xs text-muted-foreground">Availability is rechecked by the server when you submit.</span>
           </div>
         </div>
       </div>

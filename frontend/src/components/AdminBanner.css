@@ -1,0 +1,92 @@
+html:has(.admin-banner) { scrollbar-gutter: stable; }
+
+.admin-shell .admin-page-content:has(.admin-banner) {
+  width: 100%;
+  max-width: none;
+  padding: 20px clamp(16px, 2.35vw, 48px) 30px;
+  background: linear-gradient(180deg, #eaf1fc, #f3f6fd 43%, #f0f4fc);
+}
+
+.admin-banner-page {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  max-width: 1720px;
+  margin-inline: auto;
+}
+
+.admin-banner {
+  box-sizing: border-box;
+  width: 100%;
+  height: 198px;
+  padding: 18px clamp(18px, 2.5vw, 42px);
+  border: 1px solid #d4e0f4;
+  border-radius: 22px;
+  background:
+    linear-gradient(90deg, #edf3fd 12%, #edf3fd 43%, #edf3fd00 68%),
+    url("../assets/reports-campus.jpg") right center / auto 100% no-repeat,
+    #edf3fd;
+  box-shadow: 0 2px 4px #2944720c;
+}
+
+.admin-banner-eyebrow {
+  color: #0754fa;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.admin-page-content .admin-banner h1 {
+  max-width: 920px;
+  margin: 8px 0 0;
+  color: #090f24;
+  font-size: clamp(26px, 2.42vw, 40px);
+  font-weight: 800;
+  line-height: 1.17;
+}
+
+.admin-banner h1 svg {
+  display: inline-block;
+  width: .85em;
+  height: .85em;
+  margin-inline-start: .15em;
+  color: #0754fa;
+  vertical-align: -.03em;
+}
+
+.admin-page-content .admin-banner h1 + p {
+  max-width: 770px;
+  margin: 7px 0 0;
+  color: #34486f;
+  font-size: clamp(13px, 1vw, 16px);
+  line-height: 1.45;
+}
+
+.admin-banner-actions { margin-top: 13px; }
+
+@media (max-width: 760px) {
+  .admin-banner {
+    height: 218px;
+    background: linear-gradient(90deg, #edf3fdf5 20%, #edf3fdab), url("../assets/reports-campus.jpg") 64% center / cover;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-banner { height: 258px; }
+}
+
+@media (min-width: 1281px) {
+  .admin-shell:has(.admin-banner) .admin-topbar { min-height: 62px; }
+  .admin-shell:has(.admin-banner) .student-brand { font-size: 26px; }
+  .admin-shell:has(.admin-banner) .student-brand svg { width: 36px; height: 36px; }
+  .admin-shell:has(.admin-banner) .admin-nav { gap: 12px; }
+  .admin-shell:has(.admin-banner) .student-nav-link {
+    min-height: 41px;
+    padding-inline: 13px;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .admin-shell:has(.admin-banner) .student-nav-link svg { width: 18px; height: 18px; }
+  .admin-shell:has(.admin-banner) .student-nav-link.is-active { background: #0754fa; box-shadow: none; }
+}

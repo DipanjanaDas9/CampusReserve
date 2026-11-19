@@ -3,8 +3,8 @@ import {
   BarChart3,
   Bell,
   Building,
-  Building2,
   ClipboardCheck,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   Users,
@@ -18,7 +18,6 @@ const NAV = [
   { key: "facilities", label: "Manage Facilities", icon: Building, to: "/admin/facilities" },
   { key: "users", label: "Users", icon: Users, to: "/admin/users" },
   { key: "reports", label: "Reports", icon: BarChart3, to: "/admin/reports" },
-  { key: "notifications", label: "Notifications", icon: Bell, to: "/admin/notifications" },
 ];
 
 export function AdminLayout({ active, children }) {
@@ -37,18 +36,22 @@ export function AdminLayout({ active, children }) {
   function handleLogout() {
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("campus_user");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("campus_user");
     navigate("/login", { replace: true });
   }
 
   return (
-    <div className="dashboard">
-      <aside className="dashboard-sidebar">
-        <Link to="/admin" className="dashboard-brand">
-          <Building2 aria-hidden="true" />
-          <span>CampusReserve</span>
+    <div className="student-shell admin-shell">
+      <header className="student-topbar admin-topbar">
+        <Link to="/admin" className="student-brand" aria-label="CampusReserve admin home">
+          <GraduationCap aria-hidden="true" />
+          <span>
+            Campus<span>Reserve</span>
+          </span>
         </Link>
 
-        <nav className="dashboard-nav" aria-label="Admin navigation">
+        <nav className="student-nav admin-nav" aria-label="Admin navigation">
           {NAV.map(({ key, label, icon: Icon, to }) => {
             const isActive =
               active === key ||
@@ -59,7 +62,7 @@ export function AdminLayout({ active, children }) {
                 key={key}
                 to={to}
                 aria-current={isActive ? "page" : undefined}
-                className={`dashboard-nav-link${isActive ? " is-active" : ""}`}
+                className={`student-nav-link${isActive ? " is-active" : ""}`}
               >
                 <Icon aria-hidden="true" />
                 <span>{label}</span>
@@ -68,39 +71,34 @@ export function AdminLayout({ active, children }) {
           })}
         </nav>
 
-        <div className="dashboard-account">
-          <div className="account-avatar">{initials}</div>
-          <div className="account-details">
-            <strong>{user?.name || "Administrator"}</strong>
-            <span>{user?.email || "Campus administrator"}</span>
-          </div>
-          <button
-            type="button"
-            className="sidebar-logout"
-            onClick={handleLogout}
-            aria-label="Log out"
-            title="Log out"
-          >
-            <LogOut aria-hidden="true" />
-          </button>
-        </div>
-      </aside>
-
-      <main className="dashboard-main">
-        <header className="dashboard-topbar">
+        <div className="student-topbar-actions">
           <Link
             to="/admin/notifications"
-            className="topbar-icon-button"
+            aria-current={active === "notifications" ? "page" : undefined}
+            className={`student-notification-link${active === "notifications" ? " is-active" : ""}`}
             aria-label="Notifications"
           >
             <Bell aria-hidden="true" />
           </Link>
-          <div className="topbar-avatar" aria-label={user?.name || "Administrator"}>
-            {initials}
-          </div>
-        </header>
+          <details className="student-profile">
+            <summary aria-label={`${user?.name || "Administrator"} account menu`}>
+              {initials}
+            </summary>
+            <div className="student-profile-menu">
+              <strong>{user?.name || "Administrator"}</strong>
+              <span>{user?.email || "Campus administrator"}</span>
+              <button type="button" onClick={handleLogout}>
+                <LogOut aria-hidden="true" /> Sign out
+              </button>
+            </div>
+          </details>
+        </div>
+      </header>
 
-        <div className="dashboard-content admin-page-content">{children}</div>
+      <main className="student-main">
+        <div className="dashboard-content student-content admin-page-content">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { Loader2, MoreHorizontal, Pencil, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowRight, ArrowUpDown, Armchair, Building2, CircleCheck, Copy, EyeOff, Layers3, Loader2,
+  Monitor, MoreHorizontal, Pencil, Plus, Search, TrendingUp, Users, Wrench,
+} from "lucide-react";
+import { AdminBanner } from "../../components/AdminBanner";
 import { AdminLayout } from "../../layouts/AdminLayout";
 import { StatusMessage } from "../../components/StatusMessage";
 import {
@@ -13,6 +17,9 @@ import { API_BASE_URL } from "../../api/auth";
 import { EQUIPMENT_OPTIONS } from "../../data/sampleRooms";
 import { formatTime } from "../../lib/datetime";
 import { cn } from "../../lib/utils";
+import { apiRequest } from "../../api/http";
+import { measureUtilization, reportPeriod, reservationTimestamp } from "./reportMetrics";
+import "./ManageFacilitiesPage.css";
 
 const EMPTY_FORM = {
   name: "",
@@ -33,6 +40,9 @@ const fieldClass =
 const primaryButton =
   "inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-brand hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60";
 
+const compareText = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+const countLabel = new Intl.NumberFormat("en-US");
+
 const isActive = (facility) =>
   facility.is_active !== false && facility.is_active !== 0;
 
@@ -45,11 +55,15 @@ export function ManageFacilitiesPage() {
   const [facilities, setFacilities] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
+  const [building, setBuilding] = useState("");
+  const [roomType, setRoomType] = useState("");
+  const [sort, setSort] = useState(null);
+  const [reservations, setReservations] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [editing, setEditing] = useState(null);
   const [notice, setNotice] = useState({ kind: "info", text: "" });
   const [busyId, setBusyId] = useState(null);
+  const [actions, setActions] = useState(null);
 
   async function reload() {
     try {
@@ -74,25 +88,55 @@ export function ManageFacilitiesPage() {
       .catch((err) => {
         if (active) setLoadError(err instanceof Error ? err.message : "Could not load facilities.");
       });
+    apiRequest("/admin/reservations")
+      .then((rows) => {
+        if (active && Array.isArray(rows)) {
+          setReservations(rows.map((row) => ({
+            ...row, start: reservationTimestamp(row.start_time), end: reservationTimestamp(row.end_time),
+          })));
+        }
+      })
+      .catch(() => {});
     return () => { active = false; };
   }, []);
 
-  const locations = [...new Set((facilities ?? [])
-    .map((f) => f.location)
-    .filter(Boolean))].sort();
+  const options = (field) => [...new Set((facilities ?? []).map((facility) => facility[field]).filter(Boolean))]
+    .sort(compareText.compare);
+  const buildings = options("building_name");
+  const types = options("room_type");
+  const activeCount = facilities?.filter(isActive).length;
+  const metrics = useMemo(() => {
+    if (!facilities || !reservations) return null;
+    const current = measureUtilization(reservations, facilities, reportPeriod(30)).utilization;
+    const previous = measureUtilization(reservations, facilities, reportPeriod(30, true)).utilization;
+    return { current, delta: current == null || previous == null ? null : current - previous };
+  }, [facilities, reservations]);
 
-  const shown = (facilities ?? []).filter((f) => {
-    const matchesName = f.name.toLowerCase().includes(query.trim().toLowerCase());
-    const matchesLocation = !location || f.location === location;
-    const matchesStatus = !statusFilter ||
-      (statusFilter === "active" ? isActive(f) : !isActive(f));
-    return matchesName && matchesLocation && matchesStatus;
-  });
+  const search = query.trim().toLowerCase();
+  const shown = (facilities ?? []).filter((facility) =>
+    (!search || [facility.name, facility.building_name, facility.room_type, facility.room_number, facility.location,
+      ...(facility.equipment ?? [])].some((value) => value?.toLowerCase().includes(search))) &&
+    (!building || facility.building_name === building) &&
+    (!roomType || facility.room_type === roomType) &&
+    (!statusFilter || isActive(facility) === (statusFilter === "active")));
+  if (sort) {
+    shown.sort((a, b) => {
+      const valueFor = (facility) => sort.key === "status" ? (isActive(facility) ? "Active" : "Inactive") : facility[sort.key];
+      const left = valueFor(a);
+      const right = valueFor(b);
+      if (left == null || right == null) return Number(left == null) - Number(right == null);
+      return sort.direction * compareText.compare(left, right);
+    });
+  }
+
+  function sortBy(key) {
+    setSort((previous) => ({ key, direction: previous?.key === key ? -previous.direction : 1 }));
+  }
 
   async function save(values) {
-    const isNew = editing === "new";
+    const isNew = editing.mode !== "edit";
     if (isNew) await createFacility(values);
-    else await updateFacility(editing.id, values);
+    else await updateFacility(editing.facility.id, values);
     await reload().catch(() => {});
     setNotice({
       kind: "info",
@@ -166,202 +210,168 @@ export function ManageFacilitiesPage() {
     }
   }
 
+  const add = () => setEditing({ mode: "new" });
+  const delta = metrics?.delta;
+  const cards = [
+    ["Active Spaces", activeCount, Armchair],
+    ["Inactive Spaces", facilities && facilities.length - activeCount, EyeOff],
+    ["Buildings", facilities && buildings.length, Building2],
+    ["Overall Utilization", metrics?.current == null ? null : `${metrics.current.toFixed(1)}%`, TrendingUp],
+  ];
+  const columns = [
+    ["Space Name", "name"], ["Building", "building_name"], ["Room No."], ["Floor", "floor_number"],
+    ["Capacity", "capacity"], ["Equipment"], ["Status", "status"], ["Actions"],
+  ];
+
   return (
     <AdminLayout active="facilities">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Manage Facilities</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add, edit, activate, deactivate, or delete campus spaces
-            </p>
-          </div>
-          <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
-            <Plus className="h-4 w-4" aria-hidden="true" /> Add Facility
+      <div className="admin-banner-page facilities-dashboard">
+        <AdminBanner eyebrow="Admin • Facility Management"
+          title={<>Manage Campus Facilities <Wrench aria-hidden="true" /></>}
+          description="Add, update, and organize campus spaces to keep reservations accurate and facilities ready.">
+          <button type="button" className="facilities-primary" onClick={add}>
+            Add Facility <ArrowRight aria-hidden="true" />
           </button>
+        </AdminBanner>
+
+        <div className="facilities-metrics">
+          {cards.map(([label, value, Icon]) => <section key={label} className="facilities-metric admin-metric-lift">
+            <span className="facilities-icon"><Icon aria-hidden="true" /></span>
+            <div><h2>{label}</h2><strong>{typeof value === "number" ? countLabel.format(value) : value ?? "—"}</strong></div>
+            {label === "Overall Utilization" && metrics?.current != null && <div className="facilities-metric-period">
+              {delta != null && <span className={cn("facilities-pill", delta > 0 && "is-active", delta < 0 && "is-decrease")}>
+                {delta > 0 ? "↑ +" : delta < 0 ? "↓ −" : ""}{Math.abs(delta).toFixed(1)} pp
+              </span>}
+              <small>{delta == null ? "Last 30 days" : "vs. prior 30 days"}</small>
+            </div>}
+          </section>)}
         </div>
 
-        <div className="mt-6 rounded-xl border bg-card shadow-card">
-          <div className="grid gap-3 border-b p-4 sm:grid-cols-3">
-            <label className="relative">
-              <span className="sr-only">Search facilities</span>
-              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search facilities…"
-                className={cn(fieldClass, "pl-9")}
-              />
-            </label>
-            <label>
-              <span className="sr-only">Filter by location</span>
-              <select value={location} onChange={(e) => setLocation(e.target.value)} className={fieldClass}>
-                <option value="">All locations</option>
-                {locations.map((place) => <option key={place} value={place}>{place}</option>)}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filter by status</span>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={fieldClass}>
-                <option value="">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </label>
+        <section className="facilities-panel" aria-labelledby="facilities-heading">
+          <div className="facilities-toolbar">
+            <div>
+              <h2 id="facilities-heading">Facilities</h2>
+              <p>{facilities ? `${countLabel.format(shown.length)} of ${countLabel.format(facilities.length)} campus spaces` : "Manage campus spaces, their details, and availability."}</p>
+            </div>
+            <div className="facilities-filters">
+              <label className="facilities-filter facilities-search">
+                <span className="sr-only">Search facilities</span>
+                <Search aria-hidden="true" />
+                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search facilities (e.g., study room, lab…)" />
+              </label>
+              <FacilityFilter label="Filter by building" Icon={Building2} value={building} onChange={setBuilding}
+                options={[["", "All Buildings"], ...buildings.map((value) => [value, value])]} />
+              <FacilityFilter label="Filter by facility type" Icon={Layers3} value={roomType} onChange={setRoomType}
+                options={[["", "All Types"], ...types.map((value) => [value, value])]} />
+              <FacilityFilter label="Filter by status" Icon={CircleCheck} value={statusFilter} onChange={setStatusFilter}
+                options={[["", "All Statuses"], ["active", "Active"], ["inactive", "Inactive"]]} />
+              <button type="button" className="facilities-primary" onClick={add}><Plus aria-hidden="true" /> Add Facility</button>
+            </div>
           </div>
 
-          <div className="px-4 pt-3">
-            {notice.text && <StatusMessage kind={notice.kind}>{notice.text}</StatusMessage>}
-            {loadError && <StatusMessage kind="error">{loadError}</StatusMessage>}
-          </div>
-
+          {notice.text && <StatusMessage kind={notice.kind}>{notice.text}</StatusMessage>}
+          {loadError && <StatusMessage kind="error">{loadError}</StatusMessage>}
           {facilities === null && !loadError && (
-            <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground" role="status">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading facilities…
-            </p>
+            <p className="facilities-loading" role="status"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading facilities…</p>
           )}
-
           {facilities && (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[850px] text-sm">
-                <thead className="text-left text-muted-foreground">
-                  <tr>
-                    {["Name", "Building / floor / room", "Room type", "Location", "Capacity", "Hours", "Status", "Equipment"].map((heading) => (
-                      <th key={heading} scope="col" className="px-4 py-3 font-medium">{heading}</th>
-                    ))}
-                    <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
+            <div className="facilities-table-scroll" tabIndex={0} role="region" aria-label="Facility catalog">
+              <table className="facilities-table">
+                <thead><tr>
+                  {columns.map(([label, key]) => <th key={label} scope="col"
+                    aria-sort={key && sort?.key === key ? (sort.direction === 1 ? "ascending" : "descending") : undefined}>
+                    {key ? <button type="button" onClick={() => sortBy(key)}>{label}<ArrowUpDown aria-hidden="true" /></button> : label}
+                  </th>)}
+                </tr></thead>
                 <tbody>
-                  {shown.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
-                        {facilities.length === 0
-                          ? "No facilities yet. Add the first one."
-                          : "No facilities match these filters."}
-                      </td>
-                    </tr>
-                  )}
-                  {shown.map((facility) => (
-                    <tr key={facility.id} className="border-t">
-                      <td className="px-4 py-3 font-medium text-foreground">{facility.name}</td>
-                      <td className="px-4 py-3 text-foreground">{facility.building_name ?? "—"}<span className="block text-xs text-muted-foreground">Floor {facility.floor_number ?? "—"} · Room {facility.room_number ?? "—"}</span></td>
-                      <td className="px-4 py-3 text-foreground">{facility.room_type ?? "—"}</td>
-                      <td className="px-4 py-3 text-foreground">{facility.location || "—"}</td>
-                      <td className="px-4 py-3 text-foreground">{facility.capacity}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {facilityHours(facility) ?? (
-                          <span className="text-destructive" title="Rooms without hours cannot be booked">Not set</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          isActive(facility) ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"
-                        )}>
-                          {isActive(facility) ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {Array.isArray(facility.equipment) && facility.equipment.length
-                          ? facility.equipment.join(", ")
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            type="button"
-                            disabled={busyId === facility.id}
-                            onClick={() => setEditing(facility)}
-                            aria-label={`Edit ${facility.name}`}
-                            className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                          <MoreActions
-                            facility={facility}
-                            disabled={busyId === facility.id}
-                            onToggle={() => toggleStatus(facility)}
-                            onDelete={() => remove(facility)}
-                          />
+                  {!shown.length && <tr><td colSpan={columns.length} className="facilities-loading">
+                    {facilities.length ? "No facilities match these filters." : "No facilities yet. Add the first one."}
+                  </td></tr>}
+                  {shown.map((facility) => {
+                    const equipment = facility.equipment ?? [];
+                    const hours = facilityHours(facility);
+                    const active = isActive(facility);
+                    return <tr key={facility.id}>
+                      <th scope="row">
+                        <div className="facilities-space">
+                          <span className="facilities-icon"><Armchair aria-hidden="true" /></span>
+                          <div>{facility.name}{facility.room_type && <small>{facility.room_type}</small>}</div>
                         </div>
+                      </th>
+                      <td>{facility.building_name || facility.location || "—"}
+                        {facility.building_name && facility.location && facility.location !== facility.building_name && <small>{facility.location}</small>}
                       </td>
-                    </tr>
-                  ))}
+                      <td>{facility.room_number ?? "—"}</td>
+                      <td>{facility.floor_number ?? "—"}</td>
+                      <td><span className="facilities-capacity"><Users aria-hidden="true" />{facility.capacity}</span></td>
+                      <td><div className="facilities-equipment">
+                        {equipment.length ? equipment.map((item) => <span key={item} className="facilities-pill"><Monitor aria-hidden="true" />{item}</span>) : "—"}
+                      </div></td>
+                      <td><span className={cn("facilities-pill", active && "is-active")}>{active ? "Active" : "Inactive"}</span>
+                        <small>{hours ?? "Hours not set"}</small>
+                      </td>
+                      <td><div className="facilities-actions">
+                        <button type="button" disabled={busyId === facility.id} onClick={() => setEditing({ mode: "edit", facility })}
+                          aria-label={`Edit ${facility.name}`} title="Edit facility"><Pencil aria-hidden="true" /></button>
+                        <button type="button" disabled={busyId === facility.id} onClick={() => setEditing({ mode: "copy", facility })}
+                          aria-label={`Duplicate ${facility.name}`} title="Duplicate facility"><Copy aria-hidden="true" /></button>
+                        <button type="button" disabled={busyId === facility.id} onClick={() => setActions(facility)}
+                          aria-label={`More actions for ${facility.name}`} aria-haspopup="dialog" title="More actions"><MoreHorizontal aria-hidden="true" /></button>
+                      </div></td>
+                    </tr>;
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       {editing && (
-        <FacilityDialog
-          facility={editing === "new" ? null : editing}
-          onSave={save}
-          onClose={() => setEditing(null)}
-        />
+        <FacilityDialog facility={editing.facility} mode={editing.mode}
+          onSave={save} onClose={() => setEditing(null)} />
       )}
+      {actions && <MoreActions facility={actions} onClose={() => setActions(null)}
+        onToggle={() => toggleStatus(actions)} onDelete={() => remove(actions)} />}
     </AdminLayout>
   );
 }
 
-function MoreActions({ facility, onToggle, onDelete, disabled }) {
-  const [open, setOpen] = useState(false);
-  const toggleLabel = isActive(facility) ? "Deactivate" : "Activate";
-
-  return (
-    <div
-      className="relative"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-      onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
-    >
-      <button
-        type="button"
-        disabled={disabled}
-        aria-label={`More actions for ${facility.name}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-      >
-        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-md border bg-card py-1 shadow-card">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { setOpen(false); onToggle(); }}
-            className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent"
-          >
-            {toggleLabel}
-          </button>
-          <div className="my-1 border-t" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="block w-full px-3 py-2 text-left text-sm text-destructive hover:bg-accent focus:bg-accent"
-          >
-            Delete Facility
-          </button>
-        </div>
-      )}
-    </div>
-  );
+function FacilityFilter({ label, Icon, options, value, onChange }) {
+  return <label className="facilities-filter">
+    <span className="sr-only">{label}</span><Icon aria-hidden="true" />
+    <select value={value} onChange={(event) => onChange(event.target.value)}>
+      {options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}
+    </select>
+  </label>;
 }
 
-function FacilityDialog({ facility, onSave, onClose }) {
+function MoreActions({ facility, onClose, onToggle, onDelete }) {
+  const dialog = useRef(null);
+
+  useEffect(() => {
+    if (!dialog.current.open) dialog.current.showModal();
+  }, []);
+
+  return <dialog ref={dialog} onClose={onClose} aria-labelledby="facility-actions-title" className="facilities-action-dialog">
+    <h2 id="facility-actions-title">{facility.name}</h2>
+    <form method="dialog">
+      <button type="submit" onClick={onToggle}>{isActive(facility) ? "Deactivate" : "Activate"} Facility</button>
+      <button type="submit" onClick={onDelete} className="text-destructive">Delete Facility</button>
+      <button type="submit">Cancel</button>
+    </form>
+  </dialog>;
+}
+
+function FacilityDialog({ facility, mode, onSave, onClose }) {
   const dialogRef = useRef(null);
+  const copying = mode === "copy";
   const [form, setForm] = useState(() => facility ? ({
-    name: facility.name,
+    name: copying ? `${facility.name.slice(0, 93)} (copy)` : facility.name,
     building_name: facility.building_name ?? "",
     floor_number: facility.floor_number == null ? "" : String(facility.floor_number),
-    room_number: facility.room_number ?? "",
+    room_number: copying ? "" : facility.room_number ?? "",
     room_type: facility.room_type ?? "",
     capacity: String(facility.capacity),
     location: facility.location ?? "",
@@ -451,7 +461,7 @@ function FacilityDialog({ facility, onSave, onClose }) {
     >
       <form onSubmit={handleSubmit} noValidate className="p-5">
         <h2 id="facility-dialog-title" className="text-lg font-bold">
-          {facility ? "Edit Facility" : "Add Facility"}
+          {copying ? "Duplicate Facility" : mode === "edit" ? "Edit Facility" : "Add Facility"}
         </h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <TextField id="fac-name" label="Name" value={form.name} onChange={set("name")} error={errors.name} maxLength={100} className="sm:col-span-2" />
@@ -496,7 +506,7 @@ function FacilityDialog({ facility, onSave, onClose }) {
           </button>
           <button type="submit" disabled={saving} className={primaryButton}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {facility ? "Save changes" : "Add Facility"}
+            {mode === "edit" ? "Save changes" : "Add Facility"}
           </button>
         </div>
       </form>

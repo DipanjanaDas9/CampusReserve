@@ -38,7 +38,7 @@ export function BookPage() {
     }, [id]);
 
     const [purpose, setPurpose] = useState("");
-    const [attendees, setAttendees] = useState("1");
+    const [attendees, setAttendees] = useState(() => query.get("attendees") || "1");
     const [notes, setNotes] = useState("");
     const [error, setError] = useState(null);
     const [done, setDone] = useState(false);
@@ -141,7 +141,6 @@ export function BookPage() {
                 <textarea id="notes" rows={3} className={input} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Equipment needs, accessibility requests…"/>
               </div>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-              <p className="text-xs text-muted-foreground">Availability is confirmed by the server when you submit.</p>
               <div className="flex items-center justify-between gap-3">
                 <Link to="/availability" className="text-sm font-medium text-primary hover:underline">← Back to availability</Link>
                 <button type="submit" disabled={busy || !space?.is_active || Boolean(roomError)} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-brand disabled:opacity-60">

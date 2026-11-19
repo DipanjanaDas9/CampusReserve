@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
-import { AuthLayout } from "../../layouts/AuthLayout";
+import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Mail, UserRoundPlus } from "lucide-react";
+import { AuthLayout, BrandLogo } from "../../layouts/AuthLayout";
 import { AuthNotConnectedError, login, ROLE_REDIRECTS } from "../../api/auth";
 const schema = z.object({
     email: z
@@ -26,6 +26,7 @@ export function LoginPage() {
     const sessionExpired = searchParams.get("reason") === "expired";
     const [password, setPassword] = useState("");
     const [role, setRole] = useState("student");
+    const [remember, setRemember] = useState(false);
     const [show, setShow] = useState(false);
     const [errors, setErrors] = useState({});
     const [notice, setNotice] = useState(null);
@@ -46,7 +47,7 @@ export function LoginPage() {
         setErrors({});
         setLoading(true);
         try {
-            const res = await login({ ...parsed.data, remember: false, role });
+            const res = await login({ ...parsed.data, remember, role });
             window.location.assign(ROLE_REDIRECTS[res.role]);
         }
         catch (err) {
@@ -65,10 +66,11 @@ export function LoginPage() {
     const inputBase = "login-input w-full rounded-lg border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary";
     return (<AuthLayout variant="login" showTagline={false}>
       <div className="login-card rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
+        <div className="login-card-brand"><BrandLogo /></div>
         <div className="login-heading">
-          <h1 className="font-display text-2xl font-bold text-foreground">Welcome Back!</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">{role === "admin" ? "Administrator Login" : "Student Login"}</h1>
         </div>
-        <p className="login-description mt-1 text-sm text-muted-foreground">Sign in to reserve, manage, and discover campus spaces.</p>
+        <p className="login-description mt-1 text-sm text-muted-foreground">Access your CampusReserve account.</p>
         {sessionExpired && (
           <div
             role="status"
@@ -87,12 +89,6 @@ export function LoginPage() {
           </div>
         )}
 
-        <div role="tablist" aria-label="Account type" className="login-role-tabs mt-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
-          {["student", "admin"].map((r) => (<button key={r} type="button" role="tab" aria-selected={role === r} onClick={() => { setRole(r); setNotice(null); }} className={`login-role-tab rounded-md py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${role === r ? "is-selected bg-primary text-primary-foreground shadow-brand" : "text-muted-foreground hover:text-foreground"}`}>
-              {r === "student" ? "Student" : "Admin"}
-            </button>))}
-        </div>
-
         {notice && (<div role="status" className={`mt-5 flex items-start gap-2 rounded-lg border p-3 text-sm ${notice.kind === "info"
                 ? "border-primary/30 bg-accent text-accent-foreground"
                 : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
@@ -103,12 +99,11 @@ export function LoginPage() {
         <form onSubmit={onSubmit} noValidate className="login-form mt-6 flex flex-col">
           <div>
             <label htmlFor="email" className="login-field-label mb-1.5 block text-sm font-medium text-foreground">
-              <Mail aria-hidden="true" />
-              Email Address
+              <Mail aria-hidden="true" /> Email
             </label>
             <div className="relative">
               <Mail className="login-input-icon pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true"/>
-              <input id="email" type="email" autoComplete="email" placeholder={role === "admin" ? "admin@university.edu" : "yourname@university.edu"} value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={`${inputBase} ${errors.email ? "border-destructive" : "border-input"}`}/>
+              <input id="email" type="email" autoComplete="email" placeholder={role === "admin" ? "admin@university.edu" : "e.g., s12345@univ.edu"} value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={`${inputBase} ${errors.email ? "border-destructive" : "border-input"}`}/>
             </div>
             <FieldError id="email-error" msg={errors.email}/>
           </div>
@@ -128,30 +123,45 @@ export function LoginPage() {
             <FieldError id="password-error" msg={errors.password}/>
           </div>
 
-          <div className="login-forgot-row flex items-center justify-end">
+          <div className="login-forgot-row flex items-center justify-between">
+              {role === "student" && (
+                <label className="login-remember" htmlFor="remember">
+                  <input id="remember" type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+                  <span>Remember me</span>
+                </label>
+              )}
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-primary hover:underline"
               >
-                Forgot Password?
+                Forgot password?
               </Link>
           </div>
 
           <button type="submit" disabled={loading} className="login-submit flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70">
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true"/>}
-            {loading ? "Signing in..." : role === "admin" ? "Sign In as Admin" : "Sign In"}
-            {!loading && <ArrowRight aria-hidden="true" />}
+            {loading ? "Signing in..." : role === "admin" ? "Log In as Admin" : "Log In"}
           </button>
         </form>
 
-        {role === "student" ? (<p className="login-register mt-6 text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link to="/register" className="font-semibold text-primary hover:underline">
-            Register
-          </Link>
-        </p>) : (<p className="login-register mt-6 text-center text-sm text-muted-foreground">
-            Admin accounts are created by your campus administrator.
-          </p>)}
+        {role === "student" ? (
+          <>
+            <p className="login-register mt-6 text-center text-sm text-muted-foreground">New to CampusReserve?</p>
+            <Link to="/register" className="login-create-account">
+              <UserRoundPlus aria-hidden="true" /> Create a Student Account
+            </Link>
+            <button type="button" className="login-admin-switch" onClick={() => { setRole("admin"); setNotice(null); }}>
+              Administrator sign in
+            </button>
+          </>
+        ) : (
+          <p className="login-register login-admin-register mt-6 text-center text-sm text-muted-foreground">
+            <span>Admin accounts are created by your campus administrator.</span>
+            <button type="button" className="login-admin-switch" onClick={() => { setRole("student"); setNotice(null); }}>
+              Student sign in
+            </button>
+          </p>
+        )}
       </div>
     </AuthLayout>);
 }

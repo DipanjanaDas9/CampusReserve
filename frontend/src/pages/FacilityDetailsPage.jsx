@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, Loader2, MapPin, Monitor, Users } from "lucide-react";
+import { ArrowLeft, Building2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Loader2, MapPin, Monitor, Users } from "lucide-react";
 import { StudentLayout } from "../layouts/StudentLayout";
 import { SLOT_HOURS, getAvailability, toISODate } from "../api/availability";
 import { checkSelection, toggleSlot } from "../lib/slotSelection";
@@ -244,9 +244,6 @@ function Rules({ room }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> These rules are checked by the server when you submit a reservation.
-      </p>
     </>
   );
 }
