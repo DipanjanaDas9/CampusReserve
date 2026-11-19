@@ -48,6 +48,55 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+## Browser tests (end-to-end)
+
+`e2e/` drives the real app in a headless Chromium browser: registration and
+sign-in, access rules, Search Spaces filters, room details, booking from the
+availability calendar and cancelling, refused double bookings, password-reset
+pages, and the administrator approving and rejecting requests. Start the
+backend and frontend first, then from the repository root:
+
+```bash
+pip install -r e2e/requirements.txt
+playwright install chromium
+E2E_ADMIN_EMAIL=admin@demo.com E2E_ADMIN_PASSWORD=<admin password> python -m pytest e2e
+```
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `E2E_BASE_URL` | `http://localhost:5173` | Frontend address |
+| `E2E_API_URL` | `http://127.0.0.1:8000` | Backend address |
+| `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` | none | An administrator account; the admin tests are skipped without it |
+| `E2E_LIVE_AI=1` | off | Also run the AI Assistant test, which uses Gemini quota |
+
+Every run registers its own `e2e-…@example.edu` students and cancels their
+bookings afterwards. Admin tests leave approved or rejected far-future (2098)
+requests behind, so point the tests at a development database, never real
+data. Room photos from the internet are blocked during tests so a slow
+connection cannot fail them. Add `--headed` to watch the browser.
+
+## Stress test
+
+`stress/locustfile.py` is a [Locust](https://locust.io) load test. Simulated
+students register, sign in, browse and filter rooms, check availability, and
+book and cancel rooms, while the number of users rises in steps (25, 50, 100,
+200 by default, 60 seconds each). Each step is checked against NFR-02: 95% of
+responses within 3 seconds, with fewer than 1% errors. At the start, 30
+accounts also try to book the same room and hour at the same moment; at most
+one may succeed, which checks that double booking cannot happen under load.
+
+```bash
+pip install -r stress/requirements.txt
+locust -f stress/locustfile.py --host http://127.0.0.1:8000 --headless --html stress-report.html
+```
+
+The command prints one line per step and writes `stress/stress_results.json`.
+`STRESS_STEPS`, `STRESS_STEP_SECONDS`, `STRESS_SPAWN_RATE` and
+`STRESS_RACE_BURST` change the load. It creates many `stress-…` and `race-…`
+accounts and bookings in 2098–2099, so run it only against a development
+database. AI search is not stress-tested: Gemini's free tier allows about 15
+requests a minute, so that would only measure Google's rate limit.
+
 ## Campus room catalog and development data
 
 Facilities now expose optional `building_name`, integer `floor_number`,

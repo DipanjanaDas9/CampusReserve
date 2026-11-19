@@ -29,3 +29,8 @@ Thumbs.db
 *.db-journal
 *.db-wal
 *.db-shm
+# Test output
+.coverage
+stress/stress_results.json
+stress-report.html
+test-results/
