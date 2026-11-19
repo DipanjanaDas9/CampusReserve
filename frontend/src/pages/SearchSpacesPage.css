@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 14px;
   overflow: visible;
   padding: 11px 20px;
   border: 1px solid var(--campus-banner-border);
@@ -23,7 +23,7 @@
 .spaces-hero-copy h1 {
   margin: 0;
   color: var(--foreground);
-  font-size: clamp(20px, 2.2vw, 26px);
+  font-size: clamp(22px, 2.3vw, 28px);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.15;
@@ -32,7 +32,7 @@
 .spaces-hero-copy p {
   margin: 5px 0 0;
   color: oklch(0.36 0.08 258);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 550;
 }
 
@@ -62,7 +62,7 @@
   outline: 0;
   color: var(--foreground);
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .spaces-keyword-search input::placeholder {
@@ -76,7 +76,7 @@
   border-radius: 999px;
   color: var(--primary-foreground);
   background: var(--primary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   transition: background 0.15s;
 }
@@ -94,7 +94,6 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
-  margin: 0 -12px;
 }
 
 .spaces-select-filter,
@@ -129,7 +128,7 @@
 .spaces-select-filter strong,
 .spaces-equipment-filter > summary strong {
   color: var(--foreground);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 750;
   line-height: 1.2;
   text-transform: capitalize;
@@ -144,7 +143,7 @@
   outline: 0;
   color: oklch(0.36 0.07 258);
   background: transparent;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -192,7 +191,7 @@
 .spaces-equipment-filter > summary small {
   overflow: hidden;
   color: oklch(0.36 0.07 258);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -217,7 +216,7 @@
 .spaces-equipment-menu legend {
   padding: 0 5px 5px;
   color: var(--muted-foreground);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -228,7 +227,7 @@
   padding: 6px;
   border-radius: 7px;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -238,82 +237,6 @@
 
 .spaces-equipment-menu input {
   accent-color: var(--primary);
-}
-
-.spaces-advanced-filters {
-  position: relative;
-  align-self: flex-start;
-  color: oklch(0.36 0.08 258);
-  font-size: 10px;
-}
-
-.spaces-advanced-filters > summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.spaces-advanced-filters > summary::-webkit-details-marker {
-  display: none;
-}
-
-.spaces-advanced-filters > summary > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.spaces-advanced-filters > summary svg {
-  color: var(--primary);
-}
-
-.spaces-advanced-fields {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 7px);
-  left: 0;
-  display: flex;
-  align-items: end;
-  gap: 10px;
-  min-width: 300px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: 0 12px 30px -14px oklch(0.24 0.08 258 / 0.45);
-}
-
-.spaces-advanced-fields label {
-  display: grid;
-  grid-template-columns: 15px 1fr;
-  gap: 4px 6px;
-  align-items: center;
-  color: var(--muted-foreground);
-  font-size: 10px;
-}
-
-.spaces-advanced-fields label svg {
-  color: var(--primary);
-}
-
-.spaces-advanced-fields input,
-.spaces-advanced-fields select {
-  grid-column: 1 / -1;
-  width: 100%;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--input);
-  border-radius: 7px;
-  color: var(--foreground);
-  background: var(--card);
-  font-size: 11px;
-}
-
-.spaces-advanced-fields button {
-  flex-shrink: 0;
-  padding: 7px;
-  color: var(--primary);
-  font-size: 10px;
-  font-weight: 650;
 }
 
 .spaces-results {
@@ -331,7 +254,7 @@
 .spaces-results-heading h2 {
   margin: 0;
   color: var(--foreground);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -343,14 +266,14 @@
 }
 
 .spaces-result-actions > label {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-result-actions select {
   height: 30px;
   padding: 0 7px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-view-toggle {
@@ -370,7 +293,7 @@
   padding: 0 8px;
   border-radius: 6px;
   color: var(--muted-foreground);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -386,7 +309,7 @@
   gap: 6px;
   margin: -1px 0 10px;
   color: var(--muted-foreground);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-applied b {
@@ -405,7 +328,7 @@
 .spaces-applied button {
   padding: 4px;
   color: var(--primary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-results-grid,
@@ -456,6 +379,7 @@
 
 .spaces-room-info {
   display: flex;
+  min-width: 0;
   min-height: 84px;
   flex-direction: column;
   padding: 6px 8px 7px;
@@ -465,7 +389,7 @@
   overflow: hidden;
   margin: 0;
   color: var(--foreground);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -489,10 +413,16 @@
   overflow: hidden;
   margin: 3px 0 5px;
   color: var(--muted-foreground);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.spaces-room-location span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spaces-room-location svg {
@@ -517,7 +447,7 @@
   border-radius: 5px;
   color: oklch(0.31 0.07 258);
   background: oklch(0.96 0.018 258);
-  font-size: 7px;
+  font-size: 10px;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -525,6 +455,7 @@
 
 .spaces-room-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
   margin-top: auto;
@@ -535,7 +466,7 @@
   align-items: center;
   gap: 3px;
   color: var(--foreground);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -554,7 +485,7 @@
   border-radius: 999px;
   color: oklch(0.41 0.07 258);
   background: oklch(0.95 0.015 258);
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -591,7 +522,7 @@
   border-radius: 7px;
   color: var(--primary-foreground);
   background: var(--primary);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 750;
   text-decoration: none;
   transition: background 0.15s;
@@ -619,21 +550,21 @@
 }
 
 .spaces-results-grid.is-list .spaces-room-info h3 {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .spaces-results-grid.is-list .spaces-room-location {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-results-grid.is-list .spaces-room-equipment li {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .spaces-results-grid.is-list .spaces-room-capacity,
 .spaces-results-grid.is-list .spaces-availability,
 .spaces-results-grid.is-list .spaces-reserve-button {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .spaces-results-grid.is-list .spaces-room-capacity svg {
@@ -670,7 +601,7 @@
 .spaces-empty h3 {
   margin: 0;
   color: var(--foreground);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 750;
 }
 
@@ -678,7 +609,7 @@
   max-width: 420px;
   margin: 8px 0 12px;
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.7;
 }
 
@@ -687,7 +618,7 @@
   align-items: center;
   gap: 6px;
   color: var(--primary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -731,7 +662,6 @@
 @media (max-width: 900px) {
   .spaces-primary-filters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-inline: 0;
   }
 
   .spaces-results-grid,
@@ -742,7 +672,6 @@
 
 @media (max-width: 680px) {
   .spaces-hero {
-    gap: 12px;
     padding: 16px;
     background:
       var(--campus-banner-overlay),
@@ -763,10 +692,6 @@
   .spaces-loading {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
-  }
-
-  .spaces-room-footer {
-    flex-wrap: wrap;
   }
 
   .spaces-results-heading {
@@ -803,21 +728,21 @@
   }
 
   .spaces-room-info h3 {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .spaces-room-location {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .spaces-room-equipment li {
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .spaces-room-capacity,
   .spaces-availability,
   .spaces-reserve-button {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .spaces-results-grid.is-list .spaces-room-photo-link {
@@ -828,11 +753,6 @@
   .spaces-results-grid.is-list .spaces-room-info {
     min-height: 122px;
     padding: 8px;
-  }
-
-  .spaces-advanced-fields {
-    min-width: 0;
-    flex-wrap: wrap;
   }
 
   .spaces-results-heading {

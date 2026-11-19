@@ -28,10 +28,8 @@ const EMPTY_FILTERS = {
   roomType: "",
   date: "",
   timeRange: "",
-  groupSize: "1",
   equipment: [],
   building: "",
-  floor: "",
 };
 
 const TIME_RANGES = [
@@ -93,7 +91,7 @@ function EquipmentFilter({ equipment, onToggle }) {
   );
 }
 
-function SearchResultCard({ room, available, date, timeRange, groupSize, viewMode }) {
+function SearchResultCard({ room, available, date, timeRange, viewMode }) {
   const [startTime, endTime] = timeRange ? timeRange.split("|") : [];
   const bookUrl =
     available && date && startTime && endTime
@@ -101,7 +99,6 @@ function SearchResultCard({ room, available, date, timeRange, groupSize, viewMod
           date,
           start: startTime,
           end: endTime,
-          attendees: groupSize,
         })}`
       : `/spaces/${encodeURIComponent(room.id)}`;
 
@@ -198,26 +195,11 @@ export function SearchSpacesPage() {
     [rooms]
   );
 
-  const floors = useMemo(
-    () =>
-      [
-        ...new Set(
-          (rooms ?? [])
-            .filter((room) => !filters.building || room.building_name === filters.building)
-            .map((room) => room.floor_number)
-            .filter((floor) => floor != null)
-        ),
-      ].sort((a, b) => a - b),
-    [rooms, filters.building]
-  );
-
   const candidates = useMemo(() => {
     if (!rooms) return [];
     return filterFacilities(rooms, {
-      minCapacity: Number(applied.groupSize),
       equipment: applied.equipment,
       buildingName: applied.building,
-      floorNumber: applied.floor === "" ? null : Number(applied.floor),
     })
       .filter((room) => !applied.roomType || room.room_type === applied.roomType)
       .filter((room) => roomMatchesQuery(room, applied.query));
@@ -235,10 +217,8 @@ export function SearchSpacesPage() {
     applied.roomType !== "" ||
     applied.date !== "" ||
     applied.timeRange !== "" ||
-    applied.groupSize !== "1" ||
     applied.equipment.length > 0 ||
-    applied.building !== "" ||
-    applied.floor !== "";
+    applied.building !== "";
 
   const set = (key) => (event) =>
     setFilters((current) => ({ ...current, [key]: event.target.value }));
@@ -253,11 +233,6 @@ export function SearchSpacesPage() {
 
   async function onSubmit(event) {
     event.preventDefault();
-    const groupSize = Number(filters.groupSize);
-    if (!Number.isInteger(groupSize) || groupSize < 1) {
-      setFormError("Group size must be a whole number of at least 1.");
-      return;
-    }
     if (Boolean(filters.date) !== Boolean(filters.timeRange)) {
       setFormError("Choose both a date and a time range to check availability.");
       return;
@@ -275,10 +250,8 @@ export function SearchSpacesPage() {
       const startTime = nextApplied.timeRange.split("|")[0];
       const endTime = nextApplied.timeRange.split("|")[1];
       const matchingRooms = filterFacilities(rooms, {
-        minCapacity: groupSize,
         equipment: nextApplied.equipment,
         buildingName: nextApplied.building,
-        floorNumber: nextApplied.floor === "" ? null : Number(nextApplied.floor),
       })
         .filter((room) => !nextApplied.roomType || room.room_type === nextApplied.roomType)
         .filter((room) => roomMatchesQuery(room, nextApplied.query));
@@ -293,8 +266,7 @@ export function SearchSpacesPage() {
                 room.id,
                 nextApplied.date,
                 startTime,
-                endTime,
-                groupSize
+                endTime
               );
               return [String(room.id), Boolean(result.available)];
             } catch (error) {
@@ -387,11 +359,7 @@ export function SearchSpacesPage() {
               <Building2 size={15} aria-hidden="true" />
               <span>
                 <strong>Building</strong>
-                <select value={filters.building} onChange={(event) => setFilters((current) => ({
-                  ...current,
-                  building: event.target.value,
-                  floor: "",
-                }))} aria-label="Building">
+                <select value={filters.building} onChange={set("building")} aria-label="Building">
                   <option value="">All buildings</option>
                   {buildings.map((building) => <option key={building} value={building}>{building}</option>)}
                 </select>
@@ -399,35 +367,6 @@ export function SearchSpacesPage() {
             </label>
             <EquipmentFilter equipment={filters.equipment} onToggle={toggleEquipment} />
           </div>
-          <details className="spaces-advanced-filters">
-            <summary><span><Check size={14} aria-hidden="true" /> More filters</span></summary>
-            <div className="spaces-advanced-fields">
-              <label>
-                <Users size={15} aria-hidden="true" />
-                <span>Group size</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={filters.groupSize}
-                  onChange={set("groupSize")}
-                  aria-label="Group size"
-                />
-              </label>
-              <label>
-                <Building2 size={15} aria-hidden="true" />
-                <span>Floor</span>
-                <select value={filters.floor} onChange={set("floor")} aria-label="Floor">
-                  <option value="">Any floor</option>
-                  {floors.map((floor) => (
-                    <option key={floor} value={floor}>
-                      {floor === 0 ? "Ground floor (0)" : `Floor ${floor}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="button" onClick={resetFilters}>Reset filters</button>
-            </div>
-          </details>
         </form>
 
         <StatusMessage kind="error" className="mt-3">{formError}</StatusMessage>
@@ -478,9 +417,7 @@ export function SearchSpacesPage() {
                 {applied.roomType && <b>{applied.roomType}</b>}
                 {applied.date && <b>{applied.date}</b>}
                 {applied.timeRange && <b>{applied.timeRange.replace("|", " – ")}</b>}
-                {applied.groupSize !== "1" && <b>{applied.groupSize}+ people</b>}
                 {applied.building && <b>{applied.building}</b>}
-                {applied.floor !== "" && <b>Floor {applied.floor}</b>}
                 {applied.equipment.map((item) => <b key={item}>{item}</b>)}
                 <button type="button" onClick={resetFilters}>Clear all</button>
               </div>
@@ -507,7 +444,6 @@ export function SearchSpacesPage() {
                     available={availabilityById?.[String(room.id)]}
                     date={applied.date}
                     timeRange={applied.timeRange}
-                    groupSize={applied.groupSize}
                     viewMode={viewMode}
                   />
                 ))}
