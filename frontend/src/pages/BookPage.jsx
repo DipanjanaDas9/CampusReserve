@@ -38,7 +38,7 @@ export function BookPage() {
     }, [id]);
 
     const [purpose, setPurpose] = useState("");
-    const [attendees, setAttendees] = useState("1");
+    const [attendees, setAttendees] = useState(() => query.get("attendees") || "1");
     const [notes, setNotes] = useState("");
     const [error, setError] = useState(null);
     const [done, setDone] = useState(false);

@@ -223,7 +223,7 @@ export function CheckInPage() {
   return (
     <StudentLayout>
       <div className="student-page checkin-page">
-        <header className="checkin-hero">
+        <header className="campus-page-banner checkin-hero">
           <div className="checkin-hero-art" aria-hidden="true">
             <div className="checkin-hero-platform" />
             <div className="checkin-hero-marker">

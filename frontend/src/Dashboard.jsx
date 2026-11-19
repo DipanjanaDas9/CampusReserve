@@ -87,7 +87,7 @@ export default function Dashboard() {
     <StudentLayout>
       <div className="campus-dashboard">
         <section
-          className="dashboard-hero"
+          className="campus-page-banner dashboard-hero"
           style={{ "--dashboard-hero-image": `url("${HERO_IMAGE}")` }}
         >
           <div className="dashboard-hero-copy">
@@ -97,20 +97,6 @@ export default function Dashboard() {
             <Link to="/search" className="dashboard-hero-button">
               Find a space <ArrowRight aria-hidden="true" />
             </Link>
-          </div>
-          <div className="dashboard-stats" aria-label="Campus overview">
-            <div className="dashboard-stat">
-              <span className="dashboard-stat-icon"><Search aria-hidden="true" /></span>
-              <span><strong>{loadingSpaces ? "…" : facilities.length}</strong><small>Spaces to explore</small></span>
-            </div>
-            <div className="dashboard-stat">
-              <span className="dashboard-stat-icon"><CalendarCheck aria-hidden="true" /></span>
-              <span><strong>{loadingReservations ? "…" : upcomingReservations.length}</strong><small>Upcoming reservations</small></span>
-            </div>
-            <div className="dashboard-stat">
-              <span className="dashboard-stat-icon"><CheckCircle2 aria-hidden="true" /></span>
-              <span><strong>Easy</strong><small>Campus booking</small></span>
-            </div>
           </div>
         </section>
 

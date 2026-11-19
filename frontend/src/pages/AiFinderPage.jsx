@@ -65,7 +65,7 @@ export function AiFinderPage() {
   return (
     <StudentLayout active="ai">
       <div className="ai-page mx-auto max-w-6xl">
-        <header className="ai-hero">
+        <header className="campus-page-banner ai-hero">
           <p className="ai-eyebrow"><Sparkles size={14} /> YOUR CAMPUS, A LITTLE SMARTER</p>
           <h1>The right space.<br /><span>Just a few words away.</span></h1>
           <p>Tell us what you’re planning. We’ll turn your idea into a search<br className="ai-desktop-break" /> for campus spaces that fit your group, schedule, and equipment.</p>

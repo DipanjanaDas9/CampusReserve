@@ -4,7 +4,7 @@ import "./StudentPages.css";
 
 export function StudentPageHeader({ eyebrow, title, description, action, children }) {
   return (
-    <header className="student-page-heading">
+    <header className="campus-page-banner student-page-heading">
       <div className="student-page-heading-row">
         <div>
           <p className="student-page-eyebrow"><span />{eyebrow}</p>
